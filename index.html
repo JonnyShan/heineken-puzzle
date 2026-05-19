@@ -168,8 +168,88 @@
   }
   .tray {
     background:
-      radial-gradient(ellipse at 30% 20%, #ffffff 0%, var(--tray-bg) 60%, #e6e1d4 100%);
-    border-right: 1px solid rgba(0,0,0,0.2);
+      radial-gradient(ellipse at 30% 20%, #007a3a 0%, #00622e 50%, #002b14 100%);
+    border-right: 1px solid rgba(0,0,0,0.4);
+    color: #fff;
+  }
+
+  /* Leaderboard sidebar pinned to the tray (left panel) */
+  .lb-sidebar {
+    position: absolute; inset: 0;
+    z-index: 1;
+    pointer-events: none;   /* clicks pass through to puzzle pieces */
+    padding: 22px;
+    display: flex; flex-direction: column;
+    color: rgba(255,255,255,0.96);
+    font-family: var(--font);
+    background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.0));
+  }
+  .lb-sidebar-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 4px;
+  }
+  .lb-sidebar-header svg.star {
+    width: 22px; height: 22px; color: var(--hk-red);
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+  }
+  .lb-sidebar-title {
+    font-family: 'Georgia', serif; font-style: italic;
+    font-size: 22px; letter-spacing: 0.02em;
+  }
+  .lb-sidebar-sub {
+    font-size: 10px; letter-spacing: 0.20em; text-transform: uppercase;
+    opacity: 0.55; margin-bottom: 10px;
+  }
+  .lb-sidebar-list {
+    list-style: none; margin: 0; padding: 0;
+    flex: 1; overflow-y: auto;
+    border-top: 1px solid rgba(255,255,255,0.10);
+    pointer-events: auto;
+  }
+  .lb-sidebar-list::-webkit-scrollbar { width: 5px; }
+  .lb-sidebar-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
+  .lb-sidebar-list li {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 13px; letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  .lb-sidebar-list li:last-child { border-bottom: none; }
+  .lb-sidebar-list li.me {
+    background: linear-gradient(90deg, rgba(226,35,26,0.32), rgba(226,35,26,0));
+    border-left: 3px solid var(--hk-red);
+    padding-left: 3px;
+  }
+  .lb-sidebar-list .rank { font-weight: 700; opacity: 0.55; text-align: center; }
+  .lb-sidebar-list li.gold .rank   { color: #ffd700; opacity: 1; text-shadow: 0 0 8px rgba(255,215,0,0.7); }
+  .lb-sidebar-list li.silver .rank { color: #d8d8d8; opacity: 1; }
+  .lb-sidebar-list li.bronze .rank { color: #cd7f32; opacity: 1; }
+  .lb-sidebar-list .name { font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lb-sidebar-list .time { opacity: 0.85; font-weight: 600; }
+  .lb-sidebar-list .mode-pill {
+    display: inline-block;
+    font-size: 8px; opacity: 0.55; text-transform: uppercase;
+    margin-left: 5px; padding: 1px 5px;
+    border-radius: 999px; background: rgba(255,255,255,0.10);
+    letter-spacing: 0.10em; font-weight: 600;
+    vertical-align: middle;
+  }
+  .lb-sidebar-footer {
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 10px; letter-spacing: 0.16em;
+    opacity: 0.45; text-transform: uppercase; text-align: center;
+  }
+  /* On narrow mobile, sidebar tucks above the tray pieces, keeps small */
+  @media (max-width: 700px) {
+    .lb-sidebar { padding: 12px; }
+    .lb-sidebar-title { font-size: 16px; }
+    .lb-sidebar-list li { font-size: 11px; padding: 5px 4px; }
+    .lb-sidebar-list .mode-pill { display: none; }
   }
   .board {
     background:
@@ -554,6 +634,17 @@
 
 <main>
   <section class="tray" id="tray">
+    <div class="lb-sidebar" id="lbSidebar">
+      <div class="lb-sidebar-header">
+        <svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2 L14.7 9.5 L22.5 9.5 L16.2 14.2 L18.6 21.6 L12 17.1 L5.4 21.6 L7.8 14.2 L1.5 9.5 L9.3 9.5 Z"/>
+        </svg>
+        <span class="lb-sidebar-title">Leaderboard</span>
+      </div>
+      <div class="lb-sidebar-sub">Top 10 Heineken Solvers</div>
+      <ol class="lb-sidebar-list" id="lbSidebarList"></ol>
+      <div class="lb-sidebar-footer">Drink Responsibly · 18+</div>
+    </div>
     <div class="tray-stage" id="trayStage"></div>
   </section>
   <section class="board" id="board">
@@ -2025,6 +2116,8 @@
     wireControls();
     updateHintBtn();
     tryLoadAudioFiles();
+    seedFakesIfEmpty();
+    renderSidebarLB();
     buildEdges();
     buildPieces();
   }
@@ -2118,6 +2211,22 @@
   // ---------- Leaderboard ----------
   const LB_KEY = 'heineken-puzzle-leaderboard';
   const LB_NAME_KEY = 'heineken-puzzle-name';
+  const LB_SEEDED_KEY = 'heineken-puzzle-lb-seeded';
+
+  // 10 fake names to populate the leaderboard on first load.
+  // Times in milliseconds — spread between 24s (very fast) and 1m 38s.
+  const FAKE_LB = [
+    { id: 'fake-1',  name: 'KEVIN H',   timeMs:  24800, mode: 'Daily',  fake: true },
+    { id: 'fake-2',  name: 'MARCO',     timeMs:  29400, mode: 'Normal', fake: true },
+    { id: 'fake-3',  name: 'SARA L',    timeMs:  33150, mode: 'Daily',  fake: true },
+    { id: 'fake-4',  name: 'NIKO',      timeMs:  38900, mode: 'Hard',   fake: true },
+    { id: 'fake-5',  name: 'JESSE',     timeMs:  44600, mode: 'Normal', fake: true },
+    { id: 'fake-6',  name: 'LUCY P',    timeMs:  51200, mode: 'Daily',  fake: true },
+    { id: 'fake-7',  name: 'MIKE T',    timeMs:  58700, mode: 'Hard',   fake: true },
+    { id: 'fake-8',  name: 'DANI',      timeMs:  67400, mode: 'Normal', fake: true },
+    { id: 'fake-9',  name: 'ALEX K',    timeMs:  79200, mode: 'Daily',  fake: true },
+    { id: 'fake-10', name: 'JONNY',     timeMs:  98050, mode: 'Hard',   fake: true }
+  ];
 
   function loadLB() {
     try { return JSON.parse(localStorage.getItem(LB_KEY) || '[]'); }
@@ -2126,6 +2235,14 @@
   function saveLB(entries) {
     try { localStorage.setItem(LB_KEY, JSON.stringify(entries)); } catch (_) {}
   }
+  function seedFakesIfEmpty() {
+    if (localStorage.getItem(LB_SEEDED_KEY)) return;
+    const existing = loadLB();
+    if (existing.length === 0) {
+      saveLB(FAKE_LB.slice().sort((a,b) => a.timeMs - b.timeMs));
+    }
+    try { localStorage.setItem(LB_SEEDED_KEY, '1'); } catch (_) {}
+  }
   function addLB(entry) {
     const all = loadLB();
     all.push(entry);
@@ -2133,6 +2250,28 @@
     const trimmed = all.slice(0, 20);
     saveLB(trimmed);
     return trimmed;
+  }
+
+  // Sidebar leaderboard (always visible in left/tray panel)
+  function renderSidebarLB(mineId) {
+    const list = document.getElementById('lbSidebarList');
+    if (!list) return;
+    const entries = loadLB().slice(0, 10);
+    if (entries.length === 0) {
+      list.innerHTML = '<li class="lb-empty" style="display:block; padding:20px; opacity:0.5; font-style:italic; grid-template-columns:none; text-align:center;">No times yet</li>';
+      return;
+    }
+    list.innerHTML = entries.map((e, i) => {
+      const isMe = (mineId != null && e.id === mineId);
+      const medal = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+      const cls = [medal, isMe ? 'me' : ''].filter(Boolean).join(' ');
+      return `
+        <li class="${cls}">
+          <span class="rank">${i+1}</span>
+          <span class="name">${escapeHtml(e.name)}<span class="mode-pill">${escapeHtml(e.mode || 'Normal')}</span></span>
+          <span class="time">${fmtTime(e.timeMs)}</span>
+        </li>`;
+    }).join('');
   }
   function modeLabel() {
     const parts = [];
@@ -2216,6 +2355,7 @@
       const id = Date.now() + Math.floor(Math.random() * 1000);
       const entry = { id, name, timeMs, mode, date: new Date().toISOString() };
       const all = addLB(entry);
+      renderSidebarLB(id);
       showLeaderboardView(all, id);
     };
 
@@ -2246,7 +2386,12 @@
       e.stopPropagation();
       if (confirm('Clear all leaderboard times?')) {
         saveLB([]);
-        showLeaderboardView([], null);
+        // Re-seed fakes so the board never sits empty
+        try { localStorage.removeItem(LB_SEEDED_KEY); } catch (_) {}
+        seedFakesIfEmpty();
+        const all = loadLB();
+        showLeaderboardView(all, null);
+        renderSidebarLB();
       }
     });
 
