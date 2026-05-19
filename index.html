@@ -1219,48 +1219,79 @@
     }
   }
 
-  // POP sound: short noise burst + low-frequency thump
-  function playPop() {
+  // POP sound: champagne-style cork pop — pitched thump + carbonation hiss + bottle echo
+  function synthPop() {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       const ctx = new Ctx();
       const now = ctx.currentTime;
 
-      // Thump: low sine drop
-      const osc = ctx.createOscillator();
-      const oscGain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(180, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
-      oscGain.gain.setValueAtTime(0, now);
-      oscGain.gain.linearRampToValueAtTime(0.35, now + 0.005);
-      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      osc.connect(oscGain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.2);
+      // Slap-back reverb for "bottle resonance"
+      const reverb = ctx.createConvolver();
+      reverb.buffer = buildReverbIR(ctx, 0.6, 3.5);
+      const wet = ctx.createGain();
+      wet.gain.value = 0.25;
+      reverb.connect(wet).connect(ctx.destination);
 
-      // Noise burst for the "psssh" carbonation
-      const bufferSize = ctx.sampleRate * 0.25;
-      const noiseBuf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = noiseBuf.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
-      const noise = ctx.createBufferSource();
-      noise.buffer = noiseBuf;
-      const noiseGain = ctx.createGain();
-      const hp = ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = 1200;
-      noiseGain.gain.setValueAtTime(0.0001, now);
-      noiseGain.gain.linearRampToValueAtTime(0.15, now + 0.02);
-      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-      noise.connect(hp).connect(noiseGain).connect(ctx.destination);
-      noise.start(now);
-      noise.stop(now + 0.26);
+      // "Tock" cork pluck — pitched sine going UP fast then dropping (classic cork shape)
+      const tock = ctx.createOscillator();
+      const tockG = ctx.createGain();
+      tock.type = 'sine';
+      tock.frequency.setValueAtTime(110, now);
+      tock.frequency.exponentialRampToValueAtTime(420, now + 0.012);
+      tock.frequency.exponentialRampToValueAtTime(60, now + 0.18);
+      tockG.gain.setValueAtTime(0, now);
+      tockG.gain.linearRampToValueAtTime(0.45, now + 0.006);
+      tockG.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      tock.connect(tockG).connect(ctx.destination);
+      tockG.connect(reverb);
+      tock.start(now);
+      tock.stop(now + 0.25);
 
-      setTimeout(() => { try { ctx.close(); } catch(_){} }, 800);
+      // Sub-thump for bass weight
+      const sub = ctx.createOscillator();
+      const subG = ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(80, now);
+      sub.frequency.exponentialRampToValueAtTime(35, now + 0.18);
+      subG.gain.setValueAtTime(0, now);
+      subG.gain.linearRampToValueAtTime(0.30, now + 0.008);
+      subG.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      sub.connect(subG).connect(ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.3);
+
+      // "Pssshh" carbonation hiss — pink noise high-passed, longer tail
+      const hissDur = 0.45;
+      const buf = ctx.createBuffer(1, ctx.sampleRate * hissDur, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      let lastOut = 0;
+      for (let i = 0; i < d.length; i++) {
+        // Brown noise (smoother than white) for natural fizz
+        const w = (Math.random() * 2 - 1) * 0.5;
+        lastOut = (lastOut + 0.02 * w) / 1.02;
+        d[i] = lastOut * 3;
+      }
+      const hiss = ctx.createBufferSource();
+      hiss.buffer = buf;
+      const hissHP = ctx.createBiquadFilter();
+      hissHP.type = 'highpass';
+      hissHP.frequency.setValueAtTime(800, now);
+      hissHP.frequency.linearRampToValueAtTime(2500, now + 0.3);
+      const hissG = ctx.createGain();
+      hissG.gain.setValueAtTime(0, now);
+      hissG.gain.linearRampToValueAtTime(0.18, now + 0.03);
+      hissG.gain.exponentialRampToValueAtTime(0.001, now + hissDur);
+      hiss.connect(hissHP).connect(hissG).connect(ctx.destination);
+      hissG.connect(reverb);
+      hiss.start(now + 0.005);
+      hiss.stop(now + hissDur);
+
+      setTimeout(() => { try { ctx.close(); } catch(_){} }, 1200);
     } catch (_) { /* silent */ }
   }
+  function playPop() { playFileOrSynth('pop', synthPop, 0.8); }
 
   // ---------- Party time ----------
   function startParty() {
@@ -1539,40 +1570,227 @@
     }
   }
 
-  // -- Fanfare (simple Web Audio chord ascending) --
-  function playFanfare() {
+  // ---------- Audio: file-with-synth-fallback ----------
+  // Drop pop.mp3 / jingle.mp3 / cheers.mp3 into assets/audio/ to override synth.
+  const audioFiles = { pop: null, jingle: null, cheers: null };
+  let audioLoaded = false;
+  function tryLoadAudioFiles() {
+    if (audioLoaded) return;
+    audioLoaded = true;
+    ['pop', 'jingle', 'cheers'].forEach(name => {
+      const a = new Audio();
+      a.preload = 'auto';
+      // Suppress decode errors in console for missing files
+      a.addEventListener('canplaythrough', () => { audioFiles[name] = a; }, { once: true });
+      a.addEventListener('error', () => { /* file absent — synth fallback */ }, { once: true });
+      a.src = `assets/audio/${name}.mp3`;
+    });
+  }
+  function playFileOrSynth(name, synthFn, volume = 0.7) {
+    const a = audioFiles[name];
+    if (a && a.readyState >= 3) {
+      const clone = a.cloneNode(true);
+      clone.volume = volume;
+      clone.play().catch(() => synthFn());
+    } else {
+      synthFn();
+    }
+  }
+
+  // Build a synthesized reverb impulse response (slap-back stadium ambience)
+  function buildReverbIR(ctx, duration = 1.4, decay = 2.5) {
+    const len = Math.floor(ctx.sampleRate * duration);
+    const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      for (let i = 0; i < len; i++) {
+        d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      }
+    }
+    return ir;
+  }
+
+  // -- Triumphant jingle: 5-note ascending motif with marimba + brass + sub + reverb
+  function synthJingle() {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       const ctx = new Ctx();
       const now = ctx.currentTime;
-      // C major chord rising arpeggio + chord
+
+      // Master reverb
+      const reverb = ctx.createConvolver();
+      reverb.buffer = buildReverbIR(ctx, 1.6, 2.8);
+      const wet = ctx.createGain();
+      wet.gain.value = 0.22;
+      reverb.connect(wet).connect(ctx.destination);
+
+      // G3 → C4 → E4 → G4 → C5 (open chord arpeggio resolving up)
       const notes = [
-        { f: 523.25, t: 0.00, d: 0.18 }, // C5
-        { f: 659.25, t: 0.10, d: 0.18 }, // E5
-        { f: 783.99, t: 0.20, d: 0.20 }, // G5
-        { f: 1046.5, t: 0.30, d: 0.50 }, // C6
-        // chord stack
-        { f: 523.25, t: 0.50, d: 0.80 },
-        { f: 659.25, t: 0.50, d: 0.80 },
-        { f: 783.99, t: 0.50, d: 0.80 }
+        { f: 196.00, t: 0.00, d: 0.22 },
+        { f: 261.63, t: 0.16, d: 0.22 },
+        { f: 329.63, t: 0.32, d: 0.22 },
+        { f: 392.00, t: 0.48, d: 0.22 },
+        { f: 523.25, t: 0.66, d: 1.10 }
       ];
-      notes.forEach(n => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = n.f;
-        gain.gain.setValueAtTime(0, now + n.t);
-        gain.gain.linearRampToValueAtTime(0.18, now + n.t + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(now + n.t);
-        osc.stop(now + n.t + n.d + 0.05);
+
+      notes.forEach((n, i) => {
+        const start = now + n.t;
+        const stop = start + n.d;
+
+        // Marimba pluck (sine + fast decay) — brightness
+        const pluck = ctx.createOscillator();
+        const pluckG = ctx.createGain();
+        pluck.type = 'sine';
+        pluck.frequency.value = n.f * 2; // octave up for sparkle
+        pluckG.gain.setValueAtTime(0, start);
+        pluckG.gain.linearRampToValueAtTime(0.22, start + 0.005);
+        pluckG.gain.exponentialRampToValueAtTime(0.001, stop);
+        pluck.connect(pluckG);
+        pluckG.connect(ctx.destination);
+        pluckG.connect(reverb);
+        pluck.start(start);
+        pluck.stop(stop + 0.05);
+
+        // Brass body (sawtooth through LP filter) — warmth
+        const brass = ctx.createOscillator();
+        const filt = ctx.createBiquadFilter();
+        const brassG = ctx.createGain();
+        brass.type = 'sawtooth';
+        brass.frequency.value = n.f;
+        filt.type = 'lowpass';
+        filt.frequency.setValueAtTime(n.f * 3, start);
+        filt.frequency.linearRampToValueAtTime(n.f * 5, start + 0.08);
+        filt.frequency.exponentialRampToValueAtTime(n.f * 2, stop);
+        filt.Q.value = 6;
+        brassG.gain.setValueAtTime(0, start);
+        brassG.gain.linearRampToValueAtTime(0.10, start + 0.035);
+        brassG.gain.linearRampToValueAtTime(0.07, start + n.d * 0.5);
+        brassG.gain.exponentialRampToValueAtTime(0.001, stop);
+        brass.connect(filt).connect(brassG);
+        brassG.connect(ctx.destination);
+        brassG.connect(reverb);
+        brass.start(start);
+        brass.stop(stop + 0.05);
+
+        // Sub-bass on final resolution
+        if (i === notes.length - 1) {
+          const sub = ctx.createOscillator();
+          const subG = ctx.createGain();
+          sub.type = 'sine';
+          sub.frequency.value = n.f * 0.5;
+          subG.gain.setValueAtTime(0, start);
+          subG.gain.linearRampToValueAtTime(0.18, start + 0.04);
+          subG.gain.exponentialRampToValueAtTime(0.001, stop);
+          sub.connect(subG).connect(ctx.destination);
+          sub.start(start);
+          sub.stop(stop + 0.05);
+
+          // Cymbal crash on final note (high-passed noise)
+          const cymBuf = ctx.createBuffer(1, ctx.sampleRate * 0.9, ctx.sampleRate);
+          const cd = cymBuf.getChannelData(0);
+          for (let j = 0; j < cd.length; j++) cd[j] = (Math.random() * 2 - 1) * 0.5;
+          const cym = ctx.createBufferSource();
+          cym.buffer = cymBuf;
+          const cymHP = ctx.createBiquadFilter();
+          cymHP.type = 'highpass';
+          cymHP.frequency.value = 5000;
+          const cymG = ctx.createGain();
+          cymG.gain.setValueAtTime(0.0001, start);
+          cymG.gain.linearRampToValueAtTime(0.12, start + 0.008);
+          cymG.gain.exponentialRampToValueAtTime(0.0001, start + 0.9);
+          cym.connect(cymHP).connect(cymG);
+          cymG.connect(ctx.destination);
+          cymG.connect(reverb);
+          cym.start(start);
+        }
       });
-      // Auto-close context after fanfare
-      setTimeout(() => { try { ctx.close(); } catch(_){} }, 2500);
+
+      setTimeout(() => { try { ctx.close(); } catch(_){} }, 3500);
     } catch (_) { /* silent */ }
   }
+  function playJingle() { playFileOrSynth('jingle', synthJingle, 0.65); }
+
+  // -- Crowd cheer: filtered pink noise with formant sweep + tremolo + reverb
+  function synthCheer() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const now = ctx.currentTime;
+      const dur = 1.5;
+
+      // Reverb tail
+      const reverb = ctx.createConvolver();
+      reverb.buffer = buildReverbIR(ctx, 1.4, 2.0);
+      const wet = ctx.createGain();
+      wet.gain.value = 0.30;
+      reverb.connect(wet).connect(ctx.destination);
+
+      // Pink-ish noise generation
+      const bufSize = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for (let i = 0; i < bufSize; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + w * 0.0555179;
+        b1 = 0.99332 * b1 + w * 0.0750759;
+        b2 = 0.96900 * b2 + w * 0.1538520;
+        b3 = 0.86650 * b3 + w * 0.3104856;
+        b4 = 0.55000 * b4 + w * 0.5329522;
+        b5 = -0.7616 * b5 - w * 0.0168980;
+        data[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
+        b6 = w * 0.115926;
+      }
+
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+
+      // Bandpass: vowel-like formant sweep ("WOOO!")
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 1.4;
+      bp.frequency.setValueAtTime(380, now);
+      bp.frequency.linearRampToValueAtTime(880, now + 0.35);
+      bp.frequency.linearRampToValueAtTime(620, now + 0.95);
+      bp.frequency.exponentialRampToValueAtTime(280, now + dur);
+
+      // HP for presence
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 180;
+
+      // Master amp envelope
+      const amp = ctx.createGain();
+      amp.gain.setValueAtTime(0, now);
+      amp.gain.linearRampToValueAtTime(0.55, now + 0.08);
+      amp.gain.linearRampToValueAtTime(0.45, now + 0.55);
+      amp.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+      // Tremolo for crowd shimmer
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 9;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 0.09;
+      lfo.connect(lfoGain).connect(amp.gain);
+
+      src.connect(bp).connect(hp).connect(amp);
+      amp.connect(ctx.destination);
+      amp.connect(reverb);
+
+      src.start(now);
+      src.stop(now + dur);
+      lfo.start(now);
+      lfo.stop(now + dur);
+
+      setTimeout(() => { try { ctx.close(); } catch(_){} }, 3000);
+    } catch (_) { /* silent */ }
+  }
+  function playCheer() { playFileOrSynth('cheers', synthCheer, 0.65); }
+
+  // Legacy alias — keep startParty's existing call working
+  function playFanfare() { playJingle(); setTimeout(playCheer, 700); }
 
   // ---------- Image preload ----------
   function preloadImage() {
@@ -1598,6 +1816,7 @@
     }
     wireControls();
     updateHintBtn();
+    tryLoadAudioFiles();
     buildEdges();
     buildPieces();
   }
