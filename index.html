@@ -261,26 +261,123 @@
   }
   .win-card {
     text-align: center;
-    padding: 36px 56px;
-    background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-    border: 1px solid rgba(255,255,255,0.18);
+    padding: 30px 36px;
+    min-width: 360px;
+    max-width: 92vw;
+    background: linear-gradient(160deg, rgba(0,40,18,0.95), rgba(0,15,8,0.92));
+    border: 1px solid rgba(255,255,255,0.14);
     border-radius: 16px;
-    box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08);
     transform: translateY(20px) scale(0.95);
     transition: transform 600ms cubic-bezier(.2,.8,.2,1);
   }
   .win-overlay.visible .win-card { transform: translateY(0) scale(1); }
   .win-card .star {
-    width: 48px; height: 48px; color: var(--hk-red);
-    margin-bottom: 8px;
+    width: 44px; height: 44px; color: var(--hk-red);
+    margin-bottom: 4px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
   }
   .win-card h1 {
-    margin: 0 0 6px; font-size: 32px; letter-spacing: 0.04em;
+    margin: 0 0 6px; font-size: 30px; letter-spacing: 0.04em;
     font-family: 'Georgia', serif; font-style: italic;
   }
-  .win-card p {
-    margin: 0; font-size: 18px; color: rgba(255,255,255,0.75);
+  .win-card .time-line {
+    margin: 4px 0 0; font-size: 18px; color: rgba(255,255,255,0.85);
+    font-variant-numeric: tabular-nums; font-weight: 600;
+  }
+  .win-card .mode-line {
+    margin: 4px 0 0; font-size: 11px; color: rgba(255,255,255,0.55);
+    letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .win-card .name-prompt {
+    margin: 18px 0 6px; font-size: 12px; color: rgba(255,255,255,0.70);
+    letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .name-input {
+    background: rgba(0,0,0,0.55);
+    border: 2px solid var(--hk-red);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 18px;
+    letter-spacing: 0.10em;
+    text-align: center;
+    text-transform: uppercase;
+    border-radius: 8px;
+    width: 240px;
+    margin: 8px 0 4px;
+    outline: none;
+    font-family: var(--font);
+    font-weight: 700;
+    box-sizing: border-box;
+  }
+  .name-input:focus {
+    box-shadow: 0 0 0 4px rgba(226,35,26,0.35);
+    border-color: #ff6b60;
+  }
+  .win-actions {
+    display: flex; gap: 8px; justify-content: center; margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .win-actions .primary {
+    background: var(--hk-red);
+    border-color: var(--hk-red);
+  }
+  .win-actions .primary:hover { background: #ff3a30; }
+
+  /* Leaderboard list */
+  .lb {
+    list-style: none; padding: 0; margin: 16px 0 0;
+    max-height: 320px; overflow-y: auto;
+    text-align: left;
+    border-top: 1px solid rgba(255,255,255,0.10);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .lb::-webkit-scrollbar { width: 6px; }
+  .lb::-webkit-scrollbar-track { background: transparent; }
+  .lb::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+  .lb li {
+    display: grid;
+    grid-template-columns: 30px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 13px;
+    letter-spacing: 0.04em;
     font-variant-numeric: tabular-nums;
+  }
+  .lb li:last-child { border-bottom: none; }
+  .lb li.me {
+    background: linear-gradient(90deg, rgba(226,35,26,0.30), rgba(226,35,26,0));
+    border-left: 3px solid var(--hk-red);
+    padding-left: 11px;
+  }
+  .lb .rank { font-weight: 700; opacity: 0.65; text-align: center; }
+  .lb li.gold .rank   { color: #ffd700; opacity: 1; text-shadow: 0 0 8px rgba(255,215,0,0.6); }
+  .lb li.silver .rank { color: #c8c8c8; opacity: 1; }
+  .lb li.bronze .rank { color: #cd7f32; opacity: 1; }
+  .lb .name { font-weight: 700; text-transform: uppercase; }
+  .lb .time { opacity: 0.85; font-weight: 600; }
+  .lb .mode-pill {
+    display: inline-block;
+    font-size: 9px; opacity: 0.55; text-transform: uppercase;
+    margin-left: 8px; padding: 2px 6px;
+    border-radius: 999px; background: rgba(255,255,255,0.08);
+    letter-spacing: 0.10em; font-weight: 600;
+    vertical-align: middle;
+  }
+  .lb-empty {
+    padding: 32px 16px; text-align: center; opacity: 0.5; font-style: italic; font-size: 13px;
+  }
+  .lb-title {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; margin: 14px 0 0;
+    font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(255,255,255,0.65);
+  }
+  .lb-title::before, .lb-title::after {
+    content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.10);
+    max-width: 70px;
   }
 
   /* Bottle cap overlay (rendered above board after win) */
@@ -435,6 +532,9 @@
     <button class="ctrl-btn" id="restartBtn" title="Restart with a fresh scramble">
       ↻ RESTART
     </button>
+    <button class="ctrl-btn" id="lbBtn" title="View leaderboard">
+      🏆 LEADERS
+    </button>
     <div class="timer" id="timer">00:00</div>
   </div>
 </header>
@@ -461,16 +561,8 @@
 <div class="foam-layer" id="foamLayer" aria-hidden="true"></div>
 
 <div class="win-overlay" id="winOverlay">
-  <div class="win-card">
-    <svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 2 L14.7 9.5 L22.5 9.5 L16.2 14.2 L18.6 21.6 L12 17.1 L5.4 21.6 L7.8 14.2 L1.5 9.5 L9.3 9.5 Z"/>
-    </svg>
-    <h1>Solved</h1>
-    <p id="winTime">00:00</p>
-    <div style="display:flex; gap:8px; justify-content:center; margin-top:18px;">
-      <button class="ctrl-btn" id="shareBtn">📤 SHARE</button>
-      <button class="ctrl-btn" id="playAgainBtn">▶ PLAY AGAIN</button>
-    </div>
+  <div class="win-card" id="winCard">
+    <div id="winContent"></div>
   </div>
 </div>
 
@@ -1109,15 +1201,10 @@
   function checkWin() {
     if (solvedCount === ROWS * COLS) {
       stopTimer();
-      solveTimeMs = performance.now() - timerStart;
-      const finalText = document.getElementById('timer').textContent;
-      let label = `Solved in ${finalText}`;
-      if (dailyMode) label += ` · Daily ${dailyLabel()}`;
-      if (hardMode) label += ' · Hard';
-      document.getElementById('winTime').textContent = label;
+      solveTimeMs = timerStart > 0 ? (performance.now() - timerStart) : 0;
       // 1. Beat for last snap settle
-      // 2. Bottle opens (cap flies off, foam spurts)
-      // 3. Confetti + emoji + fanfare
+      // 2. Bottle opens (cap flies off, foam spurts, pop sound)
+      // 3. Confetti + emoji + jingle + cheer + leaderboard name prompt
       setTimeout(openBottle, 300);
       setTimeout(startParty, 1100);
     }
@@ -1294,6 +1381,7 @@
   function playPop() { playFileOrSynth('pop', synthPop, 0.8); }
 
   // ---------- Party time ----------
+  let partyDismissHandler = null;
   function startParty() {
     const overlay = document.getElementById('winOverlay');
     const dim = document.getElementById('winDim');
@@ -1303,26 +1391,24 @@
 
     fireConfetti();
     spawnEmojiBursts();
-    playFanfare();
+    playFanfare(); // jingle + cheer
 
-    // Wire share + play-again buttons (re-wire each win in case overlay was dismissed)
-    const shareBtn = document.getElementById('shareBtn');
-    const playAgainBtn = document.getElementById('playAgainBtn');
-    const newShare = shareBtn.cloneNode(true);
-    const newPlay = playAgainBtn.cloneNode(true);
-    shareBtn.parentNode.replaceChild(newShare, shareBtn);
-    playAgainBtn.parentNode.replaceChild(newPlay, playAgainBtn);
-    newShare.addEventListener('click', (e) => { e.stopPropagation(); shareResult(); });
-    newPlay.addEventListener('click', (e) => { e.stopPropagation(); restartGame(); });
+    // Show name entry prompt; user submits → leaderboard view
+    const timeText = `Solved in ${document.getElementById('timer').textContent}`;
+    showNamePrompt(timeText, modeLabel(), solveTimeMs);
 
-    // Click overlay (outside card) to dismiss party
-    overlay.addEventListener('click', (e) => {
-      if (e.target.closest('.win-card')) return; // ignore card clicks
+    // Click overlay (outside card) to dismiss
+    if (partyDismissHandler) overlay.removeEventListener('click', partyDismissHandler);
+    partyDismissHandler = (e) => {
+      if (e.target.closest('.win-card')) return;
       overlay.classList.remove('visible', 'party');
-      document.getElementById('winDim').classList.remove('visible');
+      dim.classList.remove('visible');
       document.body.classList.remove('party');
       stopConfetti();
-    });
+      overlay.removeEventListener('click', partyDismissHandler);
+      partyDismissHandler = null;
+    };
+    overlay.addEventListener('click', partyDismissHandler);
   }
 
   // -- Confetti --
@@ -1711,83 +1797,148 @@
   }
   function playJingle() { playFileOrSynth('jingle', synthJingle, 0.65); }
 
-  // -- Crowd cheer: filtered pink noise with formant sweep + tremolo + reverb
+  // -- Crowd cheer: layered crowd simulation
+  //    Layer A: sustained pink-noise wash with formant sweep ("WOOOO!")
+  //    Layer B: 18 individual voice bursts staggered across 2s ("hey! yeah! wooo!")
+  //    Layer C: applause rhythm (noise transients ~7Hz density)
+  //    Layer D: 4 whistles (rising sine pings)
+  //    Master: lush reverb
   function synthCheer() {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       const ctx = new Ctx();
       const now = ctx.currentTime;
-      const dur = 1.5;
+      const dur = 2.4;
 
-      // Reverb tail
+      // Master reverb (stadium)
       const reverb = ctx.createConvolver();
-      reverb.buffer = buildReverbIR(ctx, 1.4, 2.0);
+      reverb.buffer = buildReverbIR(ctx, 1.8, 2.2);
       const wet = ctx.createGain();
-      wet.gain.value = 0.30;
+      wet.gain.value = 0.32;
       reverb.connect(wet).connect(ctx.destination);
 
-      // Pink-ish noise generation
-      const bufSize = Math.floor(ctx.sampleRate * dur);
-      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-      for (let i = 0; i < bufSize; i++) {
-        const w = Math.random() * 2 - 1;
-        b0 = 0.99886 * b0 + w * 0.0555179;
-        b1 = 0.99332 * b1 + w * 0.0750759;
-        b2 = 0.96900 * b2 + w * 0.1538520;
-        b3 = 0.86650 * b3 + w * 0.3104856;
-        b4 = 0.55000 * b4 + w * 0.5329522;
-        b5 = -0.7616 * b5 - w * 0.0168980;
-        data[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
-        b6 = w * 0.115926;
-      }
+      // Helper: create pink noise buffer
+      const makePinkBuf = (seconds) => {
+        const n = Math.floor(ctx.sampleRate * seconds);
+        const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+        for (let i = 0; i < n; i++) {
+          const w = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + w * 0.0555179;
+          b1 = 0.99332 * b1 + w * 0.0750759;
+          b2 = 0.96900 * b2 + w * 0.1538520;
+          b3 = 0.86650 * b3 + w * 0.3104856;
+          b4 = 0.55000 * b4 + w * 0.5329522;
+          b5 = -0.7616 * b5 - w * 0.0168980;
+          d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
+          b6 = w * 0.115926;
+        }
+        return buf;
+      };
 
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-
-      // Bandpass: vowel-like formant sweep ("WOOO!")
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.Q.value = 1.4;
-      bp.frequency.setValueAtTime(380, now);
-      bp.frequency.linearRampToValueAtTime(880, now + 0.35);
-      bp.frequency.linearRampToValueAtTime(620, now + 0.95);
-      bp.frequency.exponentialRampToValueAtTime(280, now + dur);
-
-      // HP for presence
-      const hp = ctx.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = 180;
-
-      // Master amp envelope
-      const amp = ctx.createGain();
-      amp.gain.setValueAtTime(0, now);
-      amp.gain.linearRampToValueAtTime(0.55, now + 0.08);
-      amp.gain.linearRampToValueAtTime(0.45, now + 0.55);
-      amp.gain.exponentialRampToValueAtTime(0.001, now + dur);
-
-      // Tremolo for crowd shimmer
+      // ===== Layer A: sustained crowd wash =====
+      const washSrc = ctx.createBufferSource();
+      washSrc.buffer = makePinkBuf(dur);
+      const washBP = ctx.createBiquadFilter();
+      washBP.type = 'bandpass';
+      washBP.Q.value = 1.2;
+      washBP.frequency.setValueAtTime(380, now);
+      washBP.frequency.linearRampToValueAtTime(880, now + 0.30);
+      washBP.frequency.linearRampToValueAtTime(620, now + 1.10);
+      washBP.frequency.exponentialRampToValueAtTime(280, now + dur);
+      const washHP = ctx.createBiquadFilter();
+      washHP.type = 'highpass'; washHP.frequency.value = 180;
+      const washAmp = ctx.createGain();
+      washAmp.gain.setValueAtTime(0, now);
+      washAmp.gain.linearRampToValueAtTime(0.45, now + 0.10);
+      washAmp.gain.linearRampToValueAtTime(0.38, now + 1.4);
+      washAmp.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      // Tremolo on wash (crowd shimmer)
       const lfo = ctx.createOscillator();
       lfo.frequency.value = 9;
       const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 0.09;
-      lfo.connect(lfoGain).connect(amp.gain);
+      lfoGain.gain.value = 0.10;
+      lfo.connect(lfoGain).connect(washAmp.gain);
+      washSrc.connect(washBP).connect(washHP).connect(washAmp);
+      washAmp.connect(ctx.destination);
+      washAmp.connect(reverb);
+      washSrc.start(now); washSrc.stop(now + dur);
+      lfo.start(now); lfo.stop(now + dur);
 
-      src.connect(bp).connect(hp).connect(amp);
-      amp.connect(ctx.destination);
-      amp.connect(reverb);
+      // ===== Layer B: 18 individual voice bursts =====
+      // Each voice = short bandpass-filtered pink noise with rising-falling pitch
+      // Different start times, durations, and pitches to simulate distinct people
+      for (let i = 0; i < 18; i++) {
+        const t = now + 0.05 + Math.random() * (dur - 0.45);
+        const vdur = 0.18 + Math.random() * 0.32;
+        const voice = ctx.createBufferSource();
+        voice.buffer = makePinkBuf(vdur);
+        const vbp = ctx.createBiquadFilter();
+        vbp.type = 'bandpass';
+        vbp.Q.value = 4 + Math.random() * 4;
+        // Each voice has its own pitch — F4 to A5 range to feel like distinct people
+        const basePitch = 350 + Math.random() * 600;
+        vbp.frequency.setValueAtTime(basePitch * 0.8, t);
+        vbp.frequency.linearRampToValueAtTime(basePitch * 1.4, t + vdur * 0.4);
+        vbp.frequency.linearRampToValueAtTime(basePitch, t + vdur);
+        const vamp = ctx.createGain();
+        vamp.gain.setValueAtTime(0, t);
+        vamp.gain.linearRampToValueAtTime(0.18 + Math.random() * 0.12, t + 0.02);
+        vamp.gain.linearRampToValueAtTime(0.12, t + vdur * 0.5);
+        vamp.gain.exponentialRampToValueAtTime(0.001, t + vdur);
+        // Pan slightly random for stereo spread feel (Web Audio mono → use slight delay/diff)
+        voice.connect(vbp).connect(vamp).connect(ctx.destination);
+        vamp.connect(reverb);
+        voice.start(t);
+        voice.stop(t + vdur);
+      }
 
-      src.start(now);
-      src.stop(now + dur);
-      lfo.start(now);
-      lfo.stop(now + dur);
+      // ===== Layer C: applause rhythm (clap density) =====
+      // Many short noise transients ~7-9 per second
+      const clapCount = Math.floor(dur * 8);
+      for (let i = 0; i < clapCount; i++) {
+        const t = now + 0.15 + (i / clapCount) * (dur - 0.4) + (Math.random() - 0.5) * 0.08;
+        const cBufSize = ctx.sampleRate * 0.05;
+        const cBuf = ctx.createBuffer(1, cBufSize, ctx.sampleRate);
+        const cd = cBuf.getChannelData(0);
+        for (let j = 0; j < cd.length; j++) {
+          cd[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / cBufSize, 1.5);
+        }
+        const clap = ctx.createBufferSource();
+        clap.buffer = cBuf;
+        const cHP = ctx.createBiquadFilter();
+        cHP.type = 'highpass'; cHP.frequency.value = 1800;
+        const cAmp = ctx.createGain();
+        cAmp.gain.value = 0.05 + Math.random() * 0.06;
+        clap.connect(cHP).connect(cAmp).connect(ctx.destination);
+        cAmp.connect(reverb);
+        clap.start(t);
+      }
 
-      setTimeout(() => { try { ctx.close(); } catch(_){} }, 3000);
+      // ===== Layer D: 4 whistles (rising sine pings) =====
+      for (let i = 0; i < 4; i++) {
+        const t = now + 0.3 + Math.random() * (dur - 0.7);
+        const wdur = 0.18 + Math.random() * 0.18;
+        const whistle = ctx.createOscillator();
+        const whG = ctx.createGain();
+        whistle.type = 'sine';
+        whistle.frequency.setValueAtTime(1800 + Math.random() * 600, t);
+        whistle.frequency.linearRampToValueAtTime(2800 + Math.random() * 400, t + wdur);
+        whG.gain.setValueAtTime(0, t);
+        whG.gain.linearRampToValueAtTime(0.08, t + 0.015);
+        whG.gain.exponentialRampToValueAtTime(0.001, t + wdur);
+        whistle.connect(whG).connect(ctx.destination);
+        whG.connect(reverb);
+        whistle.start(t);
+        whistle.stop(t + wdur + 0.05);
+      }
+
+      setTimeout(() => { try { ctx.close(); } catch(_){} }, 4500);
     } catch (_) { /* silent */ }
   }
-  function playCheer() { playFileOrSynth('cheers', synthCheer, 0.65); }
+  function playCheer() { playFileOrSynth('cheers', synthCheer, 0.7); }
 
   // Legacy alias — keep startParty's existing call working
   function playFanfare() { playJingle(); setTimeout(playCheer, 700); }
@@ -1907,17 +2058,183 @@
     setTimeout(() => pulse.remove(), 2300);
   }
 
+  // ---------- Leaderboard ----------
+  const LB_KEY = 'heineken-puzzle-leaderboard';
+  const LB_NAME_KEY = 'heineken-puzzle-name';
+
+  function loadLB() {
+    try { return JSON.parse(localStorage.getItem(LB_KEY) || '[]'); }
+    catch { return []; }
+  }
+  function saveLB(entries) {
+    try { localStorage.setItem(LB_KEY, JSON.stringify(entries)); } catch (_) {}
+  }
+  function addLB(entry) {
+    const all = loadLB();
+    all.push(entry);
+    all.sort((a, b) => a.timeMs - b.timeMs);
+    const trimmed = all.slice(0, 20);
+    saveLB(trimmed);
+    return trimmed;
+  }
+  function modeLabel() {
+    const parts = [];
+    if (dailyMode) parts.push(`Daily ${dailyLabel()}`);
+    if (hardMode) parts.push('Hard');
+    return parts.length ? parts.join(' · ') : 'Normal';
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[m]));
+  }
+
+  // SVG star markup (reused)
+  const STAR_SVG = `<svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 2 L14.7 9.5 L22.5 9.5 L16.2 14.2 L18.6 21.6 L12 17.1 L5.4 21.6 L7.8 14.2 L1.5 9.5 L9.3 9.5 Z"/>
+  </svg>`;
+
+  function renderNameForm(timeText, mode) {
+    return `
+      ${STAR_SVG}
+      <h1>Solved</h1>
+      <p class="time-line">${timeText}</p>
+      <p class="mode-line">${mode}</p>
+      <p class="name-prompt">Enter your name for the leaderboard</p>
+      <input type="text" class="name-input" id="nameInput" placeholder="YOUR NAME" maxlength="12" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"/>
+      <div class="win-actions">
+        <button class="ctrl-btn primary" id="saveBtn">✓ SAVE</button>
+        <button class="ctrl-btn" id="skipBtn">SKIP</button>
+      </div>
+    `;
+  }
+
+  function renderLeaderboard(entries, mineId) {
+    const top = entries.slice(0, 10);
+    let listHtml;
+    if (top.length === 0) {
+      listHtml = `<div class="lb-empty">No times yet. Be the first.</div>`;
+    } else {
+      listHtml = '<ol class="lb">' + top.map((e, i) => {
+        const isMe = e.id === mineId;
+        const medal = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+        const cls = [medal, isMe ? 'me' : ''].filter(Boolean).join(' ');
+        return `
+          <li class="${cls}">
+            <span class="rank">${i+1}</span>
+            <span class="name">${escapeHtml(e.name)}<span class="mode-pill">${escapeHtml(e.mode || 'Normal')}</span></span>
+            <span class="time">${fmtTime(e.timeMs)}</span>
+          </li>`;
+      }).join('') + '</ol>';
+    }
+    return `
+      ${STAR_SVG}
+      <h1>Leaderboard</h1>
+      <p class="lb-title">Top 10 Times</p>
+      ${listHtml}
+      <div class="win-actions">
+        <button class="ctrl-btn primary" id="playAgainBtn">▶ PLAY AGAIN</button>
+        <button class="ctrl-btn" id="shareBtn">📤 SHARE</button>
+        <button class="ctrl-btn" id="clearLbBtn" title="Clear leaderboard">🗑</button>
+      </div>
+    `;
+  }
+
+  function showNamePrompt(timeText, mode, timeMs) {
+    const content = document.getElementById('winContent');
+    content.innerHTML = renderNameForm(timeText, mode);
+
+    const input = document.getElementById('nameInput');
+    // Pre-fill from last-used name
+    try { input.value = (localStorage.getItem(LB_NAME_KEY) || '').toUpperCase(); } catch (_) {}
+    // Focus after a tick so animations don't fight focus
+    setTimeout(() => { try { input.focus(); input.select(); } catch (_) {} }, 350);
+
+    const onSubmit = (skip) => {
+      const raw = (input.value || '').trim();
+      const name = skip ? 'ANON' : (raw.toUpperCase() || 'PLAYER');
+      if (!skip) {
+        try { localStorage.setItem(LB_NAME_KEY, name); } catch (_) {}
+      }
+      const id = Date.now() + Math.floor(Math.random() * 1000);
+      const entry = { id, name, timeMs, mode, date: new Date().toISOString() };
+      const all = addLB(entry);
+      showLeaderboardView(all, id);
+    };
+
+    document.getElementById('saveBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      onSubmit(false);
+    });
+    document.getElementById('skipBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      onSubmit(true);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); onSubmit(false); }
+    });
+    // Stop clicks inside input from dismissing party
+    input.addEventListener('click', (e) => e.stopPropagation());
+  }
+
+  function showLeaderboardView(entries, mineId) {
+    const content = document.getElementById('winContent');
+    content.innerHTML = renderLeaderboard(entries, mineId);
+    const shareBtn = document.getElementById('shareBtn');
+    const playBtn = document.getElementById('playAgainBtn');
+    const clearBtn = document.getElementById('clearLbBtn');
+    if (shareBtn) shareBtn.addEventListener('click', (e) => { e.stopPropagation(); shareResult(mineId); });
+    if (playBtn) playBtn.addEventListener('click', (e) => { e.stopPropagation(); restartGame(); });
+    if (clearBtn) clearBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm('Clear all leaderboard times?')) {
+        saveLB([]);
+        showLeaderboardView([], null);
+      }
+    });
+
+    // Scroll player's row into view
+    if (mineId != null) {
+      setTimeout(() => {
+        const meEl = content.querySelector('.lb li.me');
+        if (meEl) meEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 200);
+    }
+  }
+
+  // Standalone leaderboard view (from header LEADERS button, no name entry)
+  function openLeaderboardModal() {
+    const overlay = document.getElementById('winOverlay');
+    const dim = document.getElementById('winDim');
+    showLeaderboardView(loadLB(), null);
+    dim.classList.add('visible');
+    overlay.classList.add('visible');
+    const dismiss = (e) => {
+      if (e.target.closest('.win-card')) return;
+      overlay.classList.remove('visible', 'party');
+      dim.classList.remove('visible');
+      overlay.removeEventListener('click', dismiss);
+    };
+    overlay.addEventListener('click', dismiss);
+  }
+
   // ---------- Share ----------
-  function buildShareText() {
+  function buildShareText(mineId) {
     const url = location.origin + location.pathname;
     const time = document.getElementById('timer').textContent;
     let prefix = 'Heineken Jigsaw';
     if (dailyMode) prefix += ` Daily ${dailyLabel()}`;
     if (hardMode) prefix += ' (Hard)';
-    return `${prefix} — solved in ${time} 🍻\n${url}`;
+    let rankStr = '';
+    if (mineId != null) {
+      const all = loadLB();
+      const idx = all.findIndex(e => e.id === mineId);
+      if (idx >= 0) rankStr = ` · Rank #${idx+1}`;
+    }
+    return `${prefix} — solved in ${time} 🍻${rankStr}\n${url}`;
   }
-  async function shareResult() {
-    const text = buildShareText();
+  async function shareResult(mineId) {
+    const text = buildShareText(mineId);
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Heineken Jigsaw', text });
@@ -1950,6 +2267,7 @@
     document.getElementById('hintBtn').addEventListener('click', requestHint);
     document.getElementById('hardBtn').addEventListener('click', () => restartGame({ hard: !hardMode }));
     document.getElementById('dailyBtn').addEventListener('click', () => restartGame({ daily: !dailyMode }));
+    document.getElementById('lbBtn').addEventListener('click', openLeaderboardModal);
   }
 
   // Dev shortcut: press "W" to auto-solve (preview party).
