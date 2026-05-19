@@ -717,6 +717,34 @@
     return { tabDepth, totalW, totalH };
   }
 
+  // Analyze image at piece-grid resolution and return 2D boolean array
+  // skip[r][c] = true if that cell is mostly background (no meaningful content).
+  // We auto-place those so the user only puzzles the bottle, not the black backdrop.
+  function analyzeImageRegions(totalW, totalH) {
+    const canvas = document.createElement('canvas');
+    canvas.width = totalW;
+    canvas.height = totalH;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imageEl, 0, 0, totalW, totalH);
+    const skip = [];
+    for (let r = 0; r < ROWS; r++) {
+      const row = [];
+      for (let c = 0; c < COLS; c++) {
+        let bright = 0, total = 0;
+        const data = ctx.getImageData(c * pieceW, r * pieceH, pieceW, pieceH).data;
+        for (let i = 0; i < data.length; i += 4) {
+          const lum = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+          if (lum > 60) bright++;
+          total++;
+        }
+        // Less than 4% bright pixels = empty / background piece
+        row.push((bright / total) < 0.04);
+      }
+      skip.push(row);
+    }
+    return skip;
+  }
+
   // ---------- Build pieces ----------
   function buildPieces() {
     const trayStage = document.getElementById('trayStage');
@@ -730,6 +758,9 @@
 
     // Recompute forgiving snap threshold based on actual piece size
     SNAP_THRESHOLD = Math.round(Math.min(pieceW, pieceH) * SNAP_FRACTION);
+
+    // Detect background-only cells
+    const skip = analyzeImageRegions(totalImgW, totalImgH);
 
     pieces = [];
 
@@ -792,20 +823,31 @@
         // Initial rotation: 0 in normal mode; random 90° increment in hard mode
         const rotDeg = hardMode ? (Math.floor(rngRandom() * 4) * 90) : 0;
 
+        const isBackground = skip[r][c];
+
         const piece = {
           id, r, c, el: wrapper,
           bbW, bbH,
           homeX, homeY,
-          x: sx, y: sy,
-          rot: rotDeg,        // current rotation in degrees (multiple of 90)
-          parent: 'tray',     // 'tray' or 'board'
-          locked: false
+          x: isBackground ? homeX : sx,
+          y: isBackground ? homeY : sy,
+          rot: isBackground ? 0 : rotDeg,
+          parent: isBackground ? 'board' : 'tray',
+          locked: !!isBackground,
+          autoPlaced: !!isBackground
         };
 
-        if (hardMode) wrapper.classList.add('rotatable');
-
-        positionPiece(piece);
-        attachDrag(piece);
+        if (isBackground) {
+          // Auto-place: render directly on board, locked, no drag handler
+          document.getElementById('boardStage').appendChild(wrapper);
+          wrapper.classList.add('locked');
+          positionPiece(piece);
+          solvedCount++;
+        } else {
+          if (hardMode) wrapper.classList.add('rotatable');
+          positionPiece(piece);
+          attachDrag(piece);
+        }
         pieces.push(piece);
       }
     }
@@ -813,28 +855,28 @@
     prePlaceSome();
   }
 
-  // Pre-solve: lock PRE_SOLVED_FRACTION of pieces at their home positions on the board.
+  // Pre-solve: lock PRE_SOLVED_FRACTION of REMAINING pieces (not auto-placed) at their home positions.
   // Picks pieces randomly so the starting state varies each load.
   function prePlaceSome() {
-    const total = pieces.length;
-    const n = Math.round(total * PRE_SOLVED_FRACTION);
+    const candidates = pieces.filter(p => !p.locked); // exclude auto-placed background cells
+    const n = Math.round(candidates.length * PRE_SOLVED_FRACTION);
     if (n <= 0) return;
 
     const boardStage = document.getElementById('boardStage');
-    // Shuffle a copy of indices
-    const idx = pieces.map((_, i) => i);
-    for (let i = idx.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [idx[i], idx[j]] = [idx[j], idx[i]];
+    // Shuffle a copy
+    const pool = [...candidates];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(rngRandom() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
     for (let k = 0; k < n; k++) {
-      const piece = pieces[idx[k]];
-      // Move DOM to board stage
+      const piece = pool[k];
       boardStage.appendChild(piece.el);
       piece.parent = 'board';
       piece.x = piece.homeX;
       piece.y = piece.homeY;
+      piece.rot = 0;
       piece.locked = true;
       piece.el.classList.add('locked');
       positionPiece(piece);
