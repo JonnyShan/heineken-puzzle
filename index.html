@@ -235,17 +235,25 @@
 
   .piece svg { display: block; overflow: visible; }
 
-  /* Win overlay */
-  .win-overlay {
+  /* Dim backdrop (below confetti) */
+  .win-dim {
     position: fixed; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0.85));
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.30), rgba(0,0,0,0.70));
     opacity: 0;
     pointer-events: none;
     transition: opacity 600ms ease;
-    z-index: 500;
+    z-index: 400;
+  }
+  .win-dim.visible { opacity: 1; }
+
+  /* Win card container (above confetti) */
+  .win-overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 600ms ease;
+    z-index: 700;     /* above confetti so the card sits on top */
   }
   .win-overlay.visible {
     opacity: 1;
@@ -322,22 +330,22 @@
     100% { transform: translate(calc(var(--fx, 0) * 3), -180px) scale(1.4); opacity: 0; }
   }
 
-  /* Confetti canvas — full screen, drawn over everything */
+  /* Confetti canvas — drawn above dim backdrop, BELOW the win card */
   #confetti {
     position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 600;
+    z-index: 620;
   }
 
-  /* Floating emoji burst */
+  /* Floating emoji burst (between confetti and dim) */
   .emoji-layer {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    z-index: 550;
+    z-index: 610;
     overflow: hidden;
   }
   .emoji-pop {
@@ -447,6 +455,7 @@
   <defs id="svgDefs"></defs>
 </svg>
 
+<div class="win-dim" id="winDim" aria-hidden="true"></div>
 <canvas id="confetti" aria-hidden="true"></canvas>
 <div class="emoji-layer" id="emojiLayer" aria-hidden="true"></div>
 <div class="foam-layer" id="foamLayer" aria-hidden="true"></div>
@@ -1256,7 +1265,9 @@
   // ---------- Party time ----------
   function startParty() {
     const overlay = document.getElementById('winOverlay');
+    const dim = document.getElementById('winDim');
     document.body.classList.add('party');
+    dim.classList.add('visible');
     overlay.classList.add('visible', 'party');
 
     fireConfetti();
@@ -1277,6 +1288,7 @@
     overlay.addEventListener('click', (e) => {
       if (e.target.closest('.win-card')) return; // ignore card clicks
       overlay.classList.remove('visible', 'party');
+      document.getElementById('winDim').classList.remove('visible');
       document.body.classList.remove('party');
       stopConfetti();
     });
@@ -1289,94 +1301,185 @@
 
   function fireConfetti() {
     const canvas = document.getElementById('confetti');
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const resize = () => {
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
       canvas.style.width = window.innerWidth + 'px';
       canvas.style.height = window.innerHeight + 'px';
+      confettiCtx = canvas.getContext('2d');
+      confettiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
-    confettiCtx = canvas.getContext('2d');
-    confettiCtx.scale(dpr, dpr);
 
-    const colors = ['#e2231a', '#00853f', '#ffd700', '#ffffff', '#00b4ff', '#ff7b00'];
-
-    // Two cannons firing from bottom-left and bottom-right
+    // Heineken-leaning palette + accents
+    const colors = ['#e2231a', '#ff5b50', '#00853f', '#00a14e', '#ffd700', '#ffb300', '#ffffff', '#00b4ff'];
     const W = window.innerWidth;
     const H = window.innerHeight;
 
     confettiParticles = [];
-    const burst = (originX, originY, vxBias) => {
-      for (let i = 0; i < 140; i++) {
-        const angle = (-Math.PI / 2) + (Math.random() - 0.5) * 0.9 + vxBias;
-        const speed = 8 + Math.random() * 12;
-        confettiParticles.push({
-          x: originX,
-          y: originY,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          rot: Math.random() * Math.PI * 2,
-          vrot: (Math.random() - 0.5) * 0.4,
-          w: 6 + Math.random() * 6,
-          h: 10 + Math.random() * 8,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          life: 0,
-          maxLife: 220 + Math.random() * 80
-        });
+
+    // Wind drifts slowly over time for organic feel
+    const wind = { vx: 0, target: 0 };
+
+    function makeParticle(opts) {
+      const types = ['strip', 'ribbon', 'star', 'square'];
+      const t = opts.type || types[Math.floor(Math.random() * types.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const w = t === 'ribbon' ? 4 + Math.random() * 4 : 7 + Math.random() * 7;
+      const h = t === 'ribbon' ? 22 + Math.random() * 22 :
+                t === 'square' ? w :
+                t === 'star'   ? 10 + Math.random() * 8 :
+                                 11 + Math.random() * 10; // strip
+      return {
+        type: t,
+        x: opts.x, y: opts.y,
+        vx: opts.vx, vy: opts.vy,
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.35,
+        // Phase for 3D-flip simulation (squash on each axis based on rotation)
+        flipAxis: Math.random() < 0.5 ? 'x' : 'y',
+        flipSpeed: 0.06 + Math.random() * 0.05,
+        flipPhase: Math.random() * Math.PI * 2,
+        w, h, color,
+        sparkle: Math.random() < 0.20, // some particles twinkle
+        life: 0,
+        maxLife: 240 + Math.random() * 120
+      };
+    }
+
+    const burstUp = (originX, originY, vxBias, count) => {
+      for (let i = 0; i < count; i++) {
+        const angle = (-Math.PI / 2) + (Math.random() - 0.5) * 1.0 + vxBias * 0.3;
+        const speed = 9 + Math.random() * 13;
+        confettiParticles.push(makeParticle({
+          x: originX, y: originY,
+          vx: Math.cos(angle) * speed + vxBias,
+          vy: Math.sin(angle) * speed
+        }));
+      }
+    };
+    const dropDown = (x, vxBias, count) => {
+      for (let i = 0; i < count; i++) {
+        confettiParticles.push(makeParticle({
+          x: x + (Math.random() - 0.5) * 80,
+          y: -20 - Math.random() * 40,
+          vx: vxBias + (Math.random() - 0.5) * 4,
+          vy: 2 + Math.random() * 3
+        }));
       }
     };
 
-    burst(W * 0.10, H * 0.95, 0.5);
-    burst(W * 0.90, H * 0.95, -0.5);
-    // After short delay, two more bursts from top corners falling down
-    setTimeout(() => {
-      const cannon = (x, vxBias) => {
-        for (let i = 0; i < 90; i++) {
-          confettiParticles.push({
-            x, y: -10,
-            vx: vxBias + (Math.random() - 0.5) * 4,
-            vy: 2 + Math.random() * 3,
-            rot: Math.random() * Math.PI * 2,
-            vrot: (Math.random() - 0.5) * 0.3,
-            w: 6 + Math.random() * 6,
-            h: 10 + Math.random() * 8,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            life: 0,
-            maxLife: 280 + Math.random() * 100
-          });
-        }
-      };
-      cannon(W * 0.25, 1);
-      cannon(W * 0.75, -1);
-    }, 600);
+    // 4 cannon bursts from corners
+    burstUp(W * 0.08, H * 0.92, 7, 160);
+    burstUp(W * 0.92, H * 0.92, -7, 160);
+    setTimeout(() => { burstUp(W * 0.30, H * 0.95, 4, 110); burstUp(W * 0.70, H * 0.95, -4, 110); }, 280);
+    // Top rain
+    setTimeout(() => { dropDown(W * 0.20, 1.5, 80); dropDown(W * 0.80, -1.5, 80); }, 700);
+    // Center pop
+    setTimeout(() => burstUp(W * 0.50, H * 0.60, 0, 90), 1100);
 
     cancelAnimationFrame(confettiRAF);
+    const gravity = 0.30;
+    const drag = 0.993;
+
+    const drawStar = (ctx, r) => {
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+        const rad = i % 2 === 0 ? r : r * 0.42;
+        const x = Math.cos(a) * rad;
+        const y = Math.sin(a) * rad;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    };
+
     const tick = () => {
       const ctx = confettiCtx;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const gravity = 0.28;
-      const drag = 0.992;
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      // Drift wind toward a new target every ~60 frames
+      if (Math.random() < 0.018) wind.target = (Math.random() - 0.5) * 1.4;
+      wind.vx += (wind.target - wind.vx) * 0.025;
+
       for (let i = confettiParticles.length - 1; i >= 0; i--) {
         const p = confettiParticles[i];
         p.life++;
         p.vy += gravity;
-        p.vx *= drag;
+        p.vx = p.vx * drag + wind.vx * 0.04;
         p.x += p.vx;
         p.y += p.vy;
         p.rot += p.vrot;
+        p.flipPhase += p.flipSpeed;
+
+        const fade = p.life > p.maxLife - 40
+          ? Math.max(0, (p.maxLife - p.life) / 40)
+          : 1;
+
+        // 3D-flip simulation: scale one axis with cos(phase)
+        const flipScale = Math.abs(Math.cos(p.flipPhase)) * 0.85 + 0.15;
+        const lightSide = Math.cos(p.flipPhase) > 0; // toggles which side is "lit"
 
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot);
-        ctx.fillStyle = p.color;
-        const fade = Math.max(0, 1 - p.life / p.maxLife);
+        if (p.flipAxis === 'x') ctx.scale(flipScale, 1);
+        else                    ctx.scale(1, flipScale);
         ctx.globalAlpha = fade;
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+
+        // Slight glow
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 6;
+
+        // "Back" side a bit darker
+        ctx.fillStyle = lightSide ? p.color : shadeColor(p.color, -0.30);
+
+        if (p.type === 'star') {
+          drawStar(ctx, p.h * 0.5);
+          ctx.fill();
+          // Small inner highlight
+          ctx.globalAlpha = fade * 0.6;
+          ctx.fillStyle = '#ffffff';
+          drawStar(ctx, p.h * 0.22);
+          ctx.fill();
+        } else if (p.type === 'ribbon') {
+          // Long thin wavy ribbon — draw as filled curved rect via path
+          ctx.beginPath();
+          const w2 = p.w / 2, h2 = p.h / 2;
+          ctx.moveTo(-w2, -h2);
+          ctx.lineTo( w2, -h2);
+          ctx.lineTo( w2,  h2);
+          ctx.lineTo(-w2,  h2);
+          ctx.closePath();
+          ctx.fill();
+          // Highlight stripe
+          ctx.globalAlpha = fade * 0.45;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-w2 * 0.3, -h2, w2 * 0.6, p.h);
+        } else {
+          // square / strip
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          // Edge highlight
+          ctx.globalAlpha = fade * 0.5;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, Math.max(1, p.h * 0.18));
+        }
+
+        // Sparkle dot
+        if (p.sparkle && Math.sin(p.life * 0.3) > 0.5) {
+          ctx.globalAlpha = fade;
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(0, 0, 1.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
         ctx.restore();
 
-        if (p.life > p.maxLife || p.y > window.innerHeight + 40) {
+        if (p.life > p.maxLife || p.y > window.innerHeight + 60) {
           confettiParticles.splice(i, 1);
         }
       }
@@ -1388,6 +1491,23 @@
       }
     };
     confettiRAF = requestAnimationFrame(tick);
+  }
+
+  // Darken/lighten a hex color by `amt` (-1..1). Returns "rgb(r,g,b)".
+  function shadeColor(hex, amt) {
+    const h = hex.replace('#','');
+    const num = parseInt(h.length === 3
+      ? h.split('').map(x => x + x).join('')
+      : h, 16);
+    let r = (num >> 16) & 255;
+    let g = (num >>  8) & 255;
+    let b =  num        & 255;
+    const f = amt < 0 ? (1 + amt) : 1;
+    const add = amt > 0 ? Math.round(255 * amt) : 0;
+    r = Math.min(255, Math.max(0, Math.round(r * f + add)));
+    g = Math.min(255, Math.max(0, Math.round(g * f + add)));
+    b = Math.min(255, Math.max(0, Math.round(b * f + add)));
+    return `rgb(${r},${g},${b})`;
   }
 
   function stopConfetti() {
@@ -1502,6 +1622,7 @@
     stopConfetti();
     document.body.classList.remove('party');
     document.getElementById('winOverlay').classList.remove('visible', 'party');
+    document.getElementById('winDim').classList.remove('visible');
 
     // Reset state
     pieces = [];
