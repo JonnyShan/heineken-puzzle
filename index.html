@@ -1266,7 +1266,7 @@
     // Trigger animation next frame so opacity transition kicks in cleanly
     requestAnimationFrame(() => cap.classList.add('show'));
 
-    playPop();
+    // No pop sound — only YouTube cheers plays during celebration
 
     // Foam bursts from the neck slightly after cap clears (around 250ms)
     setTimeout(() => spawnFoam(capCx, capCy + capR * 0.8), 220);
@@ -1929,10 +1929,18 @@
       setTimeout(() => { try { ctx.close(); } catch(_){} }, 4500);
     } catch (_) { /* silent */ }
   }
-  function playCheer() { playFileOrSynth('cheers', synthCheer, 0.7); }
+  // Strict: play ONLY the cheers.mp3 file. No synth fallback (user explicit choice).
+  function playCheer() {
+    const a = audioFiles.cheers;
+    if (a && a.readyState >= 3) {
+      const clone = a.cloneNode(true);
+      clone.volume = 0.7;
+      clone.play().catch(() => {});
+    }
+  }
 
-  // Legacy alias — keep startParty's existing call working
-  function playFanfare() { playJingle(); setTimeout(playCheer, 700); }
+  // Only celebration sound = YouTube cheers.mp3 (user choice). No jingle, no pop.
+  function playFanfare() { playCheer(); }
 
   // ---------- Image preload ----------
   function preloadImage() {
