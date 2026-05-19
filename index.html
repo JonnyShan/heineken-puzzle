@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Heineken Jigsaw Puzzle</title>
+<style>
+  :root {
+    --hk-green: #00853f;
+    --hk-green-dark: #00622e;
+    --hk-red: #e2231a;
+    --bg: #0b0d0c;
+    --bg-soft: #14181a;
+    --tray-bg: #f6f3eb;
+    --board-bg: #00853f;
+    --board-shadow: rgba(0,0,0,0.45);
+    --piece-shadow: 0 6px 14px rgba(0,0,0,0.45), 0 1px 3px rgba(0,0,0,0.55);
+    --piece-shadow-lift: 0 18px 32px rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.6);
+    --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    background: radial-gradient(ellipse at top, #1a1f1c 0%, var(--bg) 60%, #050706 100%);
+    color: #fff;
+    font-family: var(--font);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  header {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; letter-spacing: 0.04em;
+    font-size: 22px;
+  }
+  .brand .star {
+    width: 22px; height: 22px;
+    color: var(--hk-red);
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+  }
+  .brand .word { font-style: italic; font-family: 'Georgia', serif; }
+
+  .timer {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 20px;
+    letter-spacing: 0.06em;
+    padding: 6px 14px;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  main {
+    position: absolute;
+    top: 64px; bottom: 0; left: 0; right: 0;
+    display: flex;
+  }
+
+  .tray, .board {
+    position: relative;
+    flex: 1 1 50%;
+    overflow: hidden;
+  }
+  .tray {
+    background:
+      radial-gradient(ellipse at 30% 20%, #ffffff 0%, var(--tray-bg) 60%, #e6e1d4 100%);
+    border-right: 1px solid rgba(0,0,0,0.2);
+  }
+  .board {
+    background:
+      radial-gradient(ellipse at 50% 30%, #00a14e 0%, var(--hk-green) 50%, var(--hk-green-dark) 100%);
+  }
+
+  /* container that holds the board grid centred */
+  .board-stage, .tray-stage {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* board target outline */
+  .target-frame {
+    position: absolute;
+    border: 2px solid rgba(0,0,0,0.35);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 25px 50px -12px var(--board-shadow);
+    background: rgba(0,0,0,0.18);
+    border-radius: 4px;
+    pointer-events: none;
+  }
+  .slot-grid {
+    position: absolute;
+    pointer-events: none;
+    /* faint outlines drawn via SVG inside */
+  }
+
+  /* SVG defs container - hidden visually */
+  .defs-svg { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+  /* Each piece is an absolutely positioned div containing an SVG */
+  .piece {
+    position: absolute;
+    cursor: grab;
+    will-change: transform;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.45));
+    transition: filter 160ms ease;
+    touch-action: none;
+  }
+  .piece.dragging {
+    cursor: grabbing;
+    filter: drop-shadow(0 16px 24px rgba(0,0,0,0.6));
+    z-index: 1000;
+  }
+  .piece.locked {
+    cursor: default;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+    pointer-events: none;
+    transition: filter 240ms ease;
+  }
+  .piece.snap-anim {
+    transition: transform 180ms cubic-bezier(.2,.8,.2,1);
+  }
+  .piece.return-anim {
+    transition: transform 320ms cubic-bezier(.34,1.56,.64,1);
+  }
+
+  /* idle wobble for tray pieces */
+  @keyframes wobble {
+    0%, 100% { transform: translate(var(--tx,0), var(--ty,0)) rotate(var(--rot,0deg)); }
+    50% { transform: translate(var(--tx,0), calc(var(--ty,0) - 1.5px)) rotate(calc(var(--rot,0deg) + 0.4deg)); }
+  }
+
+  .piece svg { display: block; overflow: visible; }
+
+  /* Win overlay */
+  .win-overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.55), rgba(0,0,0,0.85));
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 600ms ease;
+    z-index: 500;
+  }
+  .win-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .win-card {
+    text-align: center;
+    padding: 36px 56px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 16px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+    transform: translateY(20px) scale(0.95);
+    transition: transform 600ms cubic-bezier(.2,.8,.2,1);
+  }
+  .win-overlay.visible .win-card { transform: translateY(0) scale(1); }
+  .win-card .star {
+    width: 48px; height: 48px; color: var(--hk-red);
+    margin-bottom: 8px;
+  }
+  .win-card h1 {
+    margin: 0 0 6px; font-size: 32px; letter-spacing: 0.04em;
+    font-family: 'Georgia', serif; font-style: italic;
+  }
+  .win-card p {
+    margin: 0; font-size: 18px; color: rgba(255,255,255,0.75);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Confetti canvas — full screen, drawn over everything */
+  #confetti {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 600;
+  }
+
+  /* Floating emoji burst */
+  .emoji-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 550;
+    overflow: hidden;
+  }
+  .emoji-pop {
+    position: absolute;
+    font-size: 38px;
+    animation: float-up 3.6s cubic-bezier(.2,.8,.2,1) forwards;
+    will-change: transform, opacity;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+  }
+  @keyframes float-up {
+    0%   { transform: translateY(0)    rotate(0deg)   scale(0.4); opacity: 0; }
+    15%  { transform: translateY(-30px) rotate(8deg)  scale(1.1); opacity: 1; }
+    100% { transform: translateY(-90vh) rotate(540deg) scale(0.9); opacity: 0; }
+  }
+
+  /* Disco strobe lights */
+  body.party::before {
+    content: "";
+    position: fixed; inset: 0;
+    z-index: 400;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(226,35,26,0.35), transparent 30%),
+      radial-gradient(circle at 80% 30%, rgba(0,133,63,0.40), transparent 30%),
+      radial-gradient(circle at 50% 80%, rgba(255,215,0,0.30), transparent 30%),
+      radial-gradient(circle at 10% 90%, rgba(0,180,255,0.28), transparent 30%);
+    animation: disco 1.2s steps(8) infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes disco {
+    0%   { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; filter: hue-rotate(0deg); }
+    50%  { background-position: 100% 50%, 0% 50%, 50% 0%, 50% 100%; filter: hue-rotate(120deg); }
+    100% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; filter: hue-rotate(360deg); }
+  }
+
+  /* Win card: enhanced bounce-in for party */
+  .win-overlay.party .win-card {
+    animation: party-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes party-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 0 rgba(226,35,26,0.6); }
+    50%      { transform: scale(1.04); box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 24px rgba(226,35,26,0); }
+  }
+
+  /* Mobile: stack panels vertically when narrow */
+  @media (max-width: 700px) {
+    main { flex-direction: column; }
+    .tray, .board { flex: 1 1 50%; }
+    .tray { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.2); }
+    header { height: 52px; padding: 0 14px; }
+    .brand { font-size: 18px; }
+    .brand .star { width: 18px; height: 18px; }
+    .timer { font-size: 16px; padding: 4px 10px; }
+    main { top: 52px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2 L14.7 9.5 L22.5 9.5 L16.2 14.2 L18.6 21.6 L12 17.1 L5.4 21.6 L7.8 14.2 L1.5 9.5 L9.3 9.5 Z"/>
+    </svg>
+    <span class="word">Heineken</span>
+    <span style="opacity:.6; font-weight:400; font-size:14px; margin-left:6px; letter-spacing:.12em;">JIGSAW</span>
+  </div>
+  <div class="timer" id="timer">00:00</div>
+</header>
+
+<main>
+  <section class="tray" id="tray">
+    <div class="tray-stage" id="trayStage"></div>
+  </section>
+  <section class="board" id="board">
+    <div class="board-stage" id="boardStage">
+      <div class="target-frame" id="targetFrame"></div>
+      <svg class="slot-grid" id="slotGrid"></svg>
+    </div>
+  </section>
+</main>
+
+<svg class="defs-svg" aria-hidden="true">
+  <defs id="svgDefs"></defs>
+</svg>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="emoji-layer" id="emojiLayer" aria-hidden="true"></div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-card">
+    <svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2 L14.7 9.5 L22.5 9.5 L16.2 14.2 L18.6 21.6 L12 17.1 L5.4 21.6 L7.8 14.2 L1.5 9.5 L9.3 9.5 Z"/>
+    </svg>
+    <h1>Solved</h1>
+    <p id="winTime">00:00</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Config ----------
+  const COLS = 4;
+  const ROWS = 5;
+  const IMAGE_SRC = 'assets/heineken-bottle.png';
+  const SNAP_FRACTION = 0.40;        // snap if pointer within 40% of piece size from correct centre (forgiving)
+  const TAB_DEPTH = 0.20;            // fraction of piece edge length
+  const PRE_SOLVED_FRACTION = 0.30;  // start with 30% of pieces already placed
+  let SNAP_THRESHOLD = 28;           // recomputed once pieces are sized
+
+  // ---------- State ----------
+  let pieceW = 0, pieceH = 0;
+  let boardOriginX = 0, boardOriginY = 0;     // top-left of target frame on board panel
+  let trayOriginX = 0, trayOriginY = 0;       // top-left of tray scatter region
+  let trayWidth = 0, trayHeight = 0;
+  let pieces = [];
+  let edgesH = []; // edgesH[r][c] = +1 (tab pointing down into row r+1) or -1
+  let edgesV = []; // edgesV[r][c] = +1 (tab pointing right into col c+1) or -1
+  let imageEl = null;
+  let solvedCount = 0;
+  let timerStart = 0;
+  let timerHandle = null;
+  let timerRunning = false;
+
+  // ---------- Utilities ----------
+  const rand = (min, max) => Math.random() * (max - min) + min;
+  const randSign = () => Math.random() < 0.5 ? -1 : 1;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  function fmtTime(ms) {
+    const total = Math.floor(ms / 1000);
+    const m = String(Math.floor(total / 60)).padStart(2, '0');
+    const s = String(total % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  // ---------- Jigsaw path generation ----------
+  // Build path for a piece in absolute SVG coords (within its own bounding box).
+  // The piece's bounding box = [0, 0, pieceW + 2*depth, pieceH + 2*depth]
+  // The piece's body (without tabs) is offset by (depth, depth).
+  // edges: { top, right, bottom, left } each is 0 (flat), +1 (tab outward), -1 (tab inward)
+  function buildPiecePath(pw, ph, depth, edges) {
+    // Inner body corners (where edges actually run between)
+    const x0 = depth;
+    const y0 = depth;
+    const x1 = depth + pw;
+    const y1 = depth + ph;
+
+    let d = `M ${x0} ${y0}`;
+    d += edgePath(x0, y0, x1, y0, edges.top,    1, 0,  0, -1, pw, depth);  // top: rightward, perp = up
+    d += edgePath(x1, y0, x1, y1, edges.right,  0, 1,  1,  0, ph, depth);  // right: downward, perp = right
+    d += edgePath(x1, y1, x0, y1, edges.bottom, -1, 0, 0,  1, pw, depth);  // bottom: leftward, perp = down
+    d += edgePath(x0, y1, x0, y0, edges.left,   0, -1, -1, 0, ph, depth);  // left: upward, perp = left
+    d += ' Z';
+    return d;
+  }
+
+  // Generate path commands for one edge of length L going from (sx,sy) along (ex,ey)
+  // perpendicular outward direction (px, py) (unit vectors)
+  // tabFlag: 0 flat, +1 tab in +perp direction, -1 tab in -perp direction
+  function edgePath(sx, sy, tx, ty, tabFlag, ex, ey, px, py, L, depth) {
+    if (tabFlag === 0) {
+      return ` L ${tx} ${ty}`;
+    }
+    const sign = tabFlag; // +1 = outward, -1 = inward
+    const D = depth;      // tab depth in pixels
+    // Helper: given (along, perp) in piece-edge-local coords, return absolute (x,y)
+    const at = (a, p) => [
+      sx + a * ex + p * px * sign,
+      sy + a * ey + p * py * sign
+    ];
+
+    // Waypoint scheme along the edge (a = distance along edge from sx,sy):
+    //   straight to a=0.36L
+    //   curve out: control near-base, then up to neck (a=0.34L, p=0.30D)
+    //   over the top: bezier knob centred at a=0.5L, p=0.95D
+    //   back down to a=0.66L, p=0.30D
+    //   curve in to a=0.64L, p=0
+    //   straight to end
+    const cmds = [];
+
+    // Segment 1: straight along to base of tab
+    let p = at(0.36 * L, 0);
+    cmds.push(`L ${p[0]} ${p[1]}`);
+
+    // Cubic bezier 1: out and up to neck-left
+    let c1 = at(0.34 * L, 0);
+    let c2 = at(0.27 * L, 0.30 * D / Math.abs(D) * D);
+    let p2 = at(0.34 * L, 0.30 * D);
+    cmds.push(`C ${c1[0]} ${c1[1]}, ${c2[0]} ${c2[1]}, ${p2[0]} ${p2[1]}`);
+
+    // Cubic bezier 2: over the top (knob)
+    let c3 = at(0.20 * L, 0.95 * D);
+    let c4 = at(0.80 * L, 0.95 * D);
+    let p3 = at(0.66 * L, 0.30 * D);
+    cmds.push(`C ${c3[0]} ${c3[1]}, ${c4[0]} ${c4[1]}, ${p3[0]} ${p3[1]}`);
+
+    // Cubic bezier 3: in and down to base-right
+    let c5 = at(0.73 * L, 0.30 * D);
+    let c6 = at(0.66 * L, 0);
+    let p4 = at(0.64 * L, 0);
+    cmds.push(`C ${c5[0]} ${c5[1]}, ${c6[0]} ${c6[1]}, ${p4[0]} ${p4[1]}`);
+
+    // Segment final: straight to end
+    cmds.push(`L ${tx} ${ty}`);
+
+    return ' ' + cmds.join(' ');
+  }
+
+  // ---------- Build edges grid (interlocking neighbours) ----------
+  function buildEdges() {
+    edgesH = []; // horizontal edges: between row r and row r+1, for r in [0, ROWS-2]
+    edgesV = []; // vertical edges: between col c and col c+1, for c in [0, COLS-2]
+    for (let r = 0; r < ROWS - 1; r++) {
+      const row = [];
+      for (let c = 0; c < COLS; c++) row.push(randSign());
+      edgesH.push(row);
+    }
+    for (let r = 0; r < ROWS; r++) {
+      const row = [];
+      for (let c = 0; c < COLS - 1; c++) row.push(randSign());
+      edgesV.push(row);
+    }
+  }
+
+  function pieceEdges(r, c) {
+    // edges from piece's perspective:
+    // top: 0 if r==0 else if edgesH[r-1][c]==+1 piece (r-1)->piece (r) tab points DOWN, so top of piece (r) is "tab inward" (-1)
+    //                    else top of piece (r) is "tab outward" (+1)? Actually:
+    // edgesH[r-1][c] sign convention: +1 means tab protrudes from row r-1 INTO row r (so piece (r-1)'s bottom is +1 outward, piece (r)'s top is -1 inward)
+    //                                  -1 means tab protrudes from row r INTO row r-1 (piece (r-1)'s bottom is -1 inward, piece (r)'s top is +1 outward)
+    let top = 0, right = 0, bottom = 0, left = 0;
+    if (r > 0) top = -edgesH[r - 1][c]; // opposite of bottom-of-piece-above
+    if (r < ROWS - 1) bottom = edgesH[r][c];
+    if (c > 0) left = -edgesV[r][c - 1];
+    if (c < COLS - 1) right = edgesV[r][c];
+    return { top, right, bottom, left };
+  }
+
+  // ---------- Layout ----------
+  function computeLayout() {
+    const tray = document.getElementById('tray');
+    const board = document.getElementById('board');
+    const trayRect = tray.getBoundingClientRect();
+    const boardRect = board.getBoundingClientRect();
+
+    // Determine piece size that fits within board (with margin)
+    const margin = 32;
+    const availW = boardRect.width - margin * 2;
+    const availH = boardRect.height - margin * 2;
+    const cellW = availW / COLS;
+    const cellH = availH / ROWS;
+    // Pick uniform cell scale that preserves image aspect approximately equal
+    // Image is portrait (~2:3). Piece cell aspect should match image cell aspect = 1/COLS : 1/ROWS of image.
+    // We'll size piece to fit; image will be scaled to fit grid exactly.
+    const cell = Math.min(cellW, cellH * (COLS * 0.8 / ROWS)); // bias slightly so portrait image fits
+    pieceW = Math.floor(Math.min(cellW, cellH * 0.66));
+    pieceH = Math.floor(pieceW * 1.5); // portrait pieces — image is taller than wide
+    // Recompute: if total height exceeds avail, scale down
+    if (pieceH * ROWS > availH) {
+      pieceH = Math.floor(availH / ROWS);
+      pieceW = Math.floor(pieceH / 1.5);
+    }
+    if (pieceW * COLS > availW) {
+      pieceW = Math.floor(availW / COLS);
+      pieceH = Math.floor(pieceW * 1.5);
+    }
+
+    const totalW = pieceW * COLS;
+    const totalH = pieceH * ROWS;
+    boardOriginX = Math.floor((boardRect.width - totalW) / 2);
+    boardOriginY = Math.floor((boardRect.height - totalH) / 2);
+
+    // Position target frame
+    const tabDepth = Math.round(Math.min(pieceW, pieceH) * TAB_DEPTH);
+    const frame = document.getElementById('targetFrame');
+    frame.style.left = `${boardOriginX}px`;
+    frame.style.top = `${boardOriginY}px`;
+    frame.style.width = `${totalW}px`;
+    frame.style.height = `${totalH}px`;
+
+    // Slot grid SVG (faint lines)
+    const slotSvg = document.getElementById('slotGrid');
+    slotSvg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+    slotSvg.style.left = `${boardOriginX}px`;
+    slotSvg.style.top = `${boardOriginY}px`;
+    slotSvg.style.width = `${totalW}px`;
+    slotSvg.style.height = `${totalH}px`;
+    slotSvg.innerHTML = '';
+    for (let r = 1; r < ROWS; r++) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', 0);
+      line.setAttribute('x2', totalW);
+      line.setAttribute('y1', r * pieceH);
+      line.setAttribute('y2', r * pieceH);
+      line.setAttribute('stroke', 'rgba(0,0,0,0.18)');
+      line.setAttribute('stroke-width', '1');
+      slotSvg.appendChild(line);
+    }
+    for (let c = 1; c < COLS; c++) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', c * pieceW);
+      line.setAttribute('x2', c * pieceW);
+      line.setAttribute('y1', 0);
+      line.setAttribute('y2', totalH);
+      line.setAttribute('stroke', 'rgba(0,0,0,0.18)');
+      line.setAttribute('stroke-width', '1');
+      slotSvg.appendChild(line);
+    }
+
+    // Tray scatter region
+    trayOriginX = 16;
+    trayOriginY = 16;
+    trayWidth = trayRect.width - 32;
+    trayHeight = trayRect.height - 32;
+
+    return { tabDepth, totalW, totalH };
+  }
+
+  // ---------- Build pieces ----------
+  function buildPieces() {
+    const trayStage = document.getElementById('trayStage');
+    trayStage.innerHTML = '';
+    const defs = document.getElementById('svgDefs');
+    defs.innerHTML = '';
+
+    const { tabDepth } = computeLayout();
+    const totalImgW = pieceW * COLS;
+    const totalImgH = pieceH * ROWS;
+
+    // Recompute forgiving snap threshold based on actual piece size
+    SNAP_THRESHOLD = Math.round(Math.min(pieceW, pieceH) * SNAP_FRACTION);
+
+    pieces = [];
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const id = `piece-${r}-${c}`;
+        const edges = pieceEdges(r, c);
+
+        // Bounding box dims (with overhang for tabs)
+        const bbW = pieceW + tabDepth * 2;
+        const bbH = pieceH + tabDepth * 2;
+
+        // Build SVG path
+        const pathD = buildPiecePath(pieceW, pieceH, tabDepth, edges);
+
+        // Image offset within bounding box (so the bottle image aligns globally)
+        // Piece (r,c) shows region of image: x in [c*pieceW, (c+1)*pieceW], y in [r*pieceH, (r+1)*pieceH]
+        // In the bounding box, the piece body starts at (tabDepth, tabDepth)
+        // So image needs to be drawn at: x = tabDepth - c*pieceW, y = tabDepth - r*pieceH
+        const imgX = tabDepth - c * pieceW;
+        const imgY = tabDepth - r * pieceH;
+
+        // Each piece is its own SVG with the image and the path as a clip
+        const wrapper = document.createElement('div');
+        wrapper.className = 'piece';
+        wrapper.dataset.r = r;
+        wrapper.dataset.c = c;
+        wrapper.dataset.id = id;
+        wrapper.style.width = `${bbW}px`;
+        wrapper.style.height = `${bbH}px`;
+
+        const clipId = `clip-${r}-${c}`;
+        const svg = `
+          <svg width="${bbW}" height="${bbH}" viewBox="0 0 ${bbW} ${bbH}">
+            <defs>
+              <clipPath id="${clipId}">
+                <path d="${pathD}"/>
+              </clipPath>
+            </defs>
+            <g clip-path="url(#${clipId})">
+              <image href="${IMAGE_SRC}" x="${imgX}" y="${imgY}" width="${totalImgW}" height="${totalImgH}" preserveAspectRatio="none"/>
+            </g>
+            <path d="${pathD}" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="1.2" stroke-linejoin="round"/>
+          </svg>
+        `;
+        wrapper.innerHTML = svg;
+        trayStage.appendChild(wrapper);
+
+        // Compute home position: where the piece's bounding box top-left should be
+        // when piece is correctly placed on board (in BOARD coordinates).
+        // piece body starts at (boardOriginX + c*pieceW, boardOriginY + r*pieceH) on the board panel
+        // bounding box top-left = body - (tabDepth, tabDepth)
+        const homeX = boardOriginX + c * pieceW - tabDepth;
+        const homeY = boardOriginY + r * pieceH - tabDepth;
+
+        // Random scatter position in tray (in tray panel coords)
+        const sx = clamp(Math.random() * (trayWidth - bbW), trayOriginX, trayOriginX + trayWidth - bbW);
+        const sy = clamp(Math.random() * (trayHeight - bbH), trayOriginY, trayOriginY + trayHeight - bbH);
+
+        const piece = {
+          id, r, c, el: wrapper,
+          bbW, bbH,
+          homeX, homeY,
+          x: sx, y: sy,
+          parent: 'tray',     // 'tray' or 'board'
+          locked: false
+        };
+
+        positionPiece(piece);
+        attachDrag(piece);
+        pieces.push(piece);
+      }
+    }
+
+    prePlaceSome();
+  }
+
+  // Pre-solve: lock PRE_SOLVED_FRACTION of pieces at their home positions on the board.
+  // Picks pieces randomly so the starting state varies each load.
+  function prePlaceSome() {
+    const total = pieces.length;
+    const n = Math.round(total * PRE_SOLVED_FRACTION);
+    if (n <= 0) return;
+
+    const boardStage = document.getElementById('boardStage');
+    // Shuffle a copy of indices
+    const idx = pieces.map((_, i) => i);
+    for (let i = idx.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+
+    for (let k = 0; k < n; k++) {
+      const piece = pieces[idx[k]];
+      // Move DOM to board stage
+      boardStage.appendChild(piece.el);
+      piece.parent = 'board';
+      piece.x = piece.homeX;
+      piece.y = piece.homeY;
+      piece.locked = true;
+      piece.el.classList.add('locked');
+      positionPiece(piece);
+      solvedCount++;
+    }
+  }
+
+  // Position piece via transform translate, in its current parent's coordinate space
+  function positionPiece(piece) {
+    piece.el.style.transform = `translate(${piece.x}px, ${piece.y}px)`;
+  }
+
+  // Move a piece between tray and board DOM (preserving visual position)
+  function reparent(piece, target) {
+    if (piece.parent === target) return;
+    const trayRect = document.getElementById('tray').getBoundingClientRect();
+    const boardRect = document.getElementById('board').getBoundingClientRect();
+    if (piece.parent === 'tray' && target === 'board') {
+      // Convert tray-local coords to board-local coords
+      const absX = trayRect.left + piece.x;
+      const absY = trayRect.top + piece.y;
+      piece.x = absX - boardRect.left;
+      piece.y = absY - boardRect.top;
+      document.getElementById('boardStage').appendChild(piece.el);
+    } else if (piece.parent === 'board' && target === 'tray') {
+      const absX = boardRect.left + piece.x;
+      const absY = boardRect.top + piece.y;
+      piece.x = absX - trayRect.left;
+      piece.y = absY - trayRect.top;
+      document.getElementById('trayStage').appendChild(piece.el);
+    }
+    piece.parent = target;
+    positionPiece(piece);
+  }
+
+  // ---------- Drag handling ----------
+  function attachDrag(piece) {
+    const el = piece.el;
+    let active = false;
+    let pointerId = null;
+    let startPointerX = 0, startPointerY = 0;
+    let startPieceX = 0, startPieceY = 0;
+
+    el.addEventListener('pointerdown', onDown);
+
+    function onDown(e) {
+      if (piece.locked) return;
+      e.preventDefault();
+      active = true;
+      pointerId = e.pointerId;
+      el.setPointerCapture(pointerId);
+      el.classList.add('dragging');
+      el.classList.remove('snap-anim', 'return-anim');
+
+      // Bring piece to front by re-appending in current parent
+      el.parentNode.appendChild(el);
+
+      // Get piece's current absolute position (page coords)
+      const rect = el.getBoundingClientRect();
+      // Move piece into top-level "drag layer" — body — to escape panel clipping
+      moveToDragLayer(piece, rect.left, rect.top);
+
+      startPointerX = e.clientX;
+      startPointerY = e.clientY;
+      startPieceX = piece.x;
+      startPieceY = piece.y;
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+      window.addEventListener('pointercancel', onUp);
+
+      ensureTimerRunning();
+    }
+
+    function onMove(e) {
+      if (!active) return;
+      const dx = e.clientX - startPointerX;
+      const dy = e.clientY - startPointerY;
+      piece.x = startPieceX + dx;
+      piece.y = startPieceY + dy;
+      positionPiece(piece);
+    }
+
+    function onUp(e) {
+      if (!active) return;
+      active = false;
+      try { el.releasePointerCapture(pointerId); } catch (_) {}
+      el.classList.remove('dragging');
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+
+      // While in drag-layer, piece.x/.y are in PAGE coords.
+      // Compute target home position in PAGE coords.
+      const boardRect = document.getElementById('board').getBoundingClientRect();
+      const trayRect = document.getElementById('tray').getBoundingClientRect();
+      const homePageX = boardRect.left + piece.homeX;
+      const homePageY = boardRect.top + piece.homeY;
+
+      const pieceCentreX = piece.x + piece.bbW / 2;
+      const pieceCentreY = piece.y + piece.bbH / 2;
+      const homeCentreX = homePageX + piece.bbW / 2;
+      const homeCentreY = homePageY + piece.bbH / 2;
+      const dist = Math.hypot(pieceCentreX - homeCentreX, pieceCentreY - homeCentreY);
+
+      if (dist <= SNAP_THRESHOLD) {
+        // Snap to home: animate to homePage coords (still in drag layer), then commit to board parent and unlock styling
+        el.classList.add('snap-anim');
+        piece.x = homePageX;
+        piece.y = homePageY;
+        positionPiece(piece);
+        setTimeout(() => {
+          // Reparent to board
+          reparentFromDragLayer(piece, 'board');
+          // After reparent, piece is at correct homeX/homeY in board coords
+          piece.locked = true;
+          el.classList.remove('snap-anim');
+          el.classList.add('locked');
+          solvedCount++;
+          checkWin();
+        }, 200);
+      } else {
+        // Decide which panel pointer ended over (for nice handoff)
+        const ux = e.clientX, uy = e.clientY;
+        const overBoard = ux >= boardRect.left && ux <= boardRect.right && uy >= boardRect.top && uy <= boardRect.bottom;
+        const target = overBoard ? 'board' : 'tray';
+
+        // Reparent to that panel and clamp inside its bounds
+        reparentFromDragLayer(piece, target);
+        const panelRect = (target === 'board' ? boardRect : trayRect);
+        piece.x = clamp(piece.x, 4, panelRect.width - piece.bbW - 4);
+        piece.y = clamp(piece.y, 4, panelRect.height - piece.bbH - 4);
+        el.classList.add('return-anim');
+        positionPiece(piece);
+        setTimeout(() => el.classList.remove('return-anim'), 360);
+      }
+    }
+  }
+
+  // Move piece into <body> drag layer so it's not clipped by panel overflow
+  function moveToDragLayer(piece, pageX, pageY) {
+    if (piece.parent === 'drag') return;
+    document.body.appendChild(piece.el);
+    piece.parent = 'drag';
+    piece.x = pageX;
+    piece.y = pageY;
+    positionPiece(piece);
+  }
+
+  function reparentFromDragLayer(piece, target) {
+    const stage = document.getElementById(target === 'board' ? 'boardStage' : 'trayStage');
+    const stageRect = stage.getBoundingClientRect();
+    // Convert page coords to stage-local
+    piece.x = piece.x - stageRect.left;
+    piece.y = piece.y - stageRect.top;
+    stage.appendChild(piece.el);
+    piece.parent = target;
+    positionPiece(piece);
+  }
+
+  // ---------- Timer ----------
+  function ensureTimerRunning() {
+    if (timerRunning) return;
+    timerRunning = true;
+    timerStart = performance.now();
+    timerHandle = setInterval(() => {
+      const elapsed = performance.now() - timerStart;
+      document.getElementById('timer').textContent = fmtTime(elapsed);
+    }, 250);
+  }
+  function stopTimer() {
+    if (!timerRunning) return;
+    timerRunning = false;
+    clearInterval(timerHandle);
+  }
+
+  // ---------- Win ----------
+  function checkWin() {
+    if (solvedCount === ROWS * COLS) {
+      stopTimer();
+      const finalText = document.getElementById('timer').textContent;
+      document.getElementById('winTime').textContent = `Solved in ${finalText}`;
+      // Brief delay so the last snap animation finishes before party kicks in
+      setTimeout(startParty, 250);
+    }
+  }
+
+  // ---------- Party time ----------
+  function startParty() {
+    const overlay = document.getElementById('winOverlay');
+    document.body.classList.add('party');
+    overlay.classList.add('visible', 'party');
+
+    fireConfetti();
+    spawnEmojiBursts();
+    playFanfare();
+
+    // Click overlay to dismiss party
+    overlay.addEventListener('click', () => {
+      overlay.classList.remove('visible', 'party');
+      document.body.classList.remove('party');
+      stopConfetti();
+    }, { once: true });
+  }
+
+  // -- Confetti --
+  let confettiRAF = null;
+  let confettiParticles = [];
+  let confettiCtx = null;
+
+  function fireConfetti() {
+    const canvas = document.getElementById('confetti');
+    const dpr = window.devicePixelRatio || 1;
+    const resize = () => {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    confettiCtx = canvas.getContext('2d');
+    confettiCtx.scale(dpr, dpr);
+
+    const colors = ['#e2231a', '#00853f', '#ffd700', '#ffffff', '#00b4ff', '#ff7b00'];
+
+    // Two cannons firing from bottom-left and bottom-right
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+
+    confettiParticles = [];
+    const burst = (originX, originY, vxBias) => {
+      for (let i = 0; i < 140; i++) {
+        const angle = (-Math.PI / 2) + (Math.random() - 0.5) * 0.9 + vxBias;
+        const speed = 8 + Math.random() * 12;
+        confettiParticles.push({
+          x: originX,
+          y: originY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.4,
+          w: 6 + Math.random() * 6,
+          h: 10 + Math.random() * 8,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          life: 0,
+          maxLife: 220 + Math.random() * 80
+        });
+      }
+    };
+
+    burst(W * 0.10, H * 0.95, 0.5);
+    burst(W * 0.90, H * 0.95, -0.5);
+    // After short delay, two more bursts from top corners falling down
+    setTimeout(() => {
+      const cannon = (x, vxBias) => {
+        for (let i = 0; i < 90; i++) {
+          confettiParticles.push({
+            x, y: -10,
+            vx: vxBias + (Math.random() - 0.5) * 4,
+            vy: 2 + Math.random() * 3,
+            rot: Math.random() * Math.PI * 2,
+            vrot: (Math.random() - 0.5) * 0.3,
+            w: 6 + Math.random() * 6,
+            h: 10 + Math.random() * 8,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            life: 0,
+            maxLife: 280 + Math.random() * 100
+          });
+        }
+      };
+      cannon(W * 0.25, 1);
+      cannon(W * 0.75, -1);
+    }, 600);
+
+    cancelAnimationFrame(confettiRAF);
+    const tick = () => {
+      const ctx = confettiCtx;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const gravity = 0.28;
+      const drag = 0.992;
+      for (let i = confettiParticles.length - 1; i >= 0; i--) {
+        const p = confettiParticles[i];
+        p.life++;
+        p.vy += gravity;
+        p.vx *= drag;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vrot;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        const fade = Math.max(0, 1 - p.life / p.maxLife);
+        ctx.globalAlpha = fade;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+
+        if (p.life > p.maxLife || p.y > window.innerHeight + 40) {
+          confettiParticles.splice(i, 1);
+        }
+      }
+      if (confettiParticles.length > 0) {
+        confettiRAF = requestAnimationFrame(tick);
+      } else {
+        cancelAnimationFrame(confettiRAF);
+        confettiRAF = null;
+      }
+    };
+    confettiRAF = requestAnimationFrame(tick);
+  }
+
+  function stopConfetti() {
+    confettiParticles = [];
+    if (confettiCtx) {
+      const c = document.getElementById('confetti');
+      confettiCtx.clearRect(0, 0, c.width, c.height);
+    }
+  }
+
+  // -- Emoji bursts --
+  function spawnEmojiBursts() {
+    const layer = document.getElementById('emojiLayer');
+    layer.innerHTML = '';
+    const emojis = ['🎉', '🍻', '⭐', '🍺', '✨', '🎊', '🥳'];
+    const total = 28;
+    for (let i = 0; i < total; i++) {
+      setTimeout(() => {
+        const span = document.createElement('span');
+        span.className = 'emoji-pop';
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        const left = 5 + Math.random() * 90;
+        span.style.left = `${left}vw`;
+        span.style.bottom = `-40px`;
+        span.style.fontSize = `${28 + Math.random() * 28}px`;
+        layer.appendChild(span);
+        setTimeout(() => span.remove(), 3700);
+      }, i * 90);
+    }
+  }
+
+  // -- Fanfare (simple Web Audio chord ascending) --
+  function playFanfare() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const now = ctx.currentTime;
+      // C major chord rising arpeggio + chord
+      const notes = [
+        { f: 523.25, t: 0.00, d: 0.18 }, // C5
+        { f: 659.25, t: 0.10, d: 0.18 }, // E5
+        { f: 783.99, t: 0.20, d: 0.20 }, // G5
+        { f: 1046.5, t: 0.30, d: 0.50 }, // C6
+        // chord stack
+        { f: 523.25, t: 0.50, d: 0.80 },
+        { f: 659.25, t: 0.50, d: 0.80 },
+        { f: 783.99, t: 0.50, d: 0.80 }
+      ];
+      notes.forEach(n => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = n.f;
+        gain.gain.setValueAtTime(0, now + n.t);
+        gain.gain.linearRampToValueAtTime(0.18, now + n.t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + n.t + n.d);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + n.t);
+        osc.stop(now + n.t + n.d + 0.05);
+      });
+      // Auto-close context after fanfare
+      setTimeout(() => { try { ctx.close(); } catch(_){} }, 2500);
+    } catch (_) { /* silent */ }
+  }
+
+  // ---------- Image preload ----------
+  function preloadImage() {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = (e) => reject(new Error(`Failed to load ${IMAGE_SRC}`));
+      img.src = IMAGE_SRC;
+      imageEl = img;
+    });
+  }
+
+  // ---------- Init ----------
+  async function init() {
+    try {
+      await preloadImage();
+    } catch (err) {
+      const msg = document.createElement('div');
+      msg.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0b0d0c;color:#fff;font-family:sans-serif;text-align:center;padding:24px;';
+      msg.innerHTML = `<div><h2 style="color:#e2231a">Image not found</h2><p>Place <code>${IMAGE_SRC}</code> next to <code>index.html</code> and reload.</p></div>`;
+      document.body.appendChild(msg);
+      return;
+    }
+    buildEdges();
+    buildPieces();
+  }
+
+  // Rebuild on resize (debounced)
+  let resizeT;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => {
+      // Only rebuild if not in middle of solving — destructive, so just on initial sizing
+      // For simplicity we skip live resize re-layout once pieces exist.
+    }, 200);
+  });
+
+  // Dev shortcut: press "W" to auto-solve (preview party).
+  // Press "C" to fire confetti standalone without affecting puzzle state.
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'w' || e.key === 'W') {
+      pieces.forEach(p => {
+        if (p.locked) return;
+        document.getElementById('boardStage').appendChild(p.el);
+        p.parent = 'board';
+        p.x = p.homeX;
+        p.y = p.homeY;
+        p.locked = true;
+        p.el.classList.add('locked');
+        positionPiece(p);
+        solvedCount++;
+      });
+      stopTimer();
+      const finalText = document.getElementById('timer').textContent;
+      document.getElementById('winTime').textContent = `Solved in ${finalText}`;
+      setTimeout(startParty, 200);
+    } else if (e.key === 'c' || e.key === 'C') {
+      fireConfetti();
+      spawnEmojiBursts();
+      playFanfare();
+    }
+  });
+
+  // Boot
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
