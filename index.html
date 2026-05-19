@@ -188,6 +188,53 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Bottle cap overlay (rendered above board after win) */
+  .bottle-cap {
+    position: fixed;
+    z-index: 540;
+    pointer-events: none;
+    will-change: transform, opacity;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));
+    transform-origin: 50% 50%;
+    opacity: 0;
+  }
+  .bottle-cap.show {
+    opacity: 1;
+    animation: cap-pop 1.8s cubic-bezier(.4, .0, .6, 1) forwards;
+  }
+  @keyframes cap-pop {
+    0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+    8%   { transform: translate(0, 4px) scale(1.05) rotate(-3deg); }      /* anticipation */
+    14%  { transform: translate(0, -8px) scale(1.12) rotate(2deg); }       /* pop */
+    35%  { transform: translate(40px, -260px) scale(1.05) rotate(420deg); } /* peak arc */
+    65%  { transform: translate(120px, -160px) scale(0.95) rotate(900deg); }
+    100% { transform: translate(240px, 700px) scale(0.7) rotate(1620deg); opacity: 0; } /* fall off-screen */
+  }
+
+  /* Foam burst from bottle neck */
+  .foam-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 530;
+    overflow: hidden;
+  }
+  .foam-blob {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffffff 0%, #fbf5d8 40%, rgba(251,245,216,0.4) 70%, rgba(251,245,216,0) 100%);
+    will-change: transform, opacity;
+    animation: foam-rise 2.4s cubic-bezier(.2,.7,.3,1) forwards;
+    filter: blur(0.5px);
+    mix-blend-mode: screen;
+  }
+  @keyframes foam-rise {
+    0%   { transform: translate(0,0) scale(0.2); opacity: 0; }
+    15%  { transform: translate(var(--fx, 0), -10px) scale(0.6); opacity: 0.95; }
+    60%  { transform: translate(calc(var(--fx, 0) * 2), -80px) scale(1.1); opacity: 0.7; }
+    100% { transform: translate(calc(var(--fx, 0) * 3), -180px) scale(1.4); opacity: 0; }
+  }
+
   /* Confetti canvas — full screen, drawn over everything */
   #confetti {
     position: fixed;
@@ -292,6 +339,7 @@
 
 <canvas id="confetti" aria-hidden="true"></canvas>
 <div class="emoji-layer" id="emojiLayer" aria-hidden="true"></div>
+<div class="foam-layer" id="foamLayer" aria-hidden="true"></div>
 
 <div class="win-overlay" id="winOverlay">
   <div class="win-card">
@@ -817,9 +865,151 @@
       stopTimer();
       const finalText = document.getElementById('timer').textContent;
       document.getElementById('winTime').textContent = `Solved in ${finalText}`;
-      // Brief delay so the last snap animation finishes before party kicks in
-      setTimeout(startParty, 250);
+      // 1. Beat for last snap settle
+      // 2. Bottle opens (cap flies off, foam spurts)
+      // 3. Confetti + emoji + fanfare
+      setTimeout(openBottle, 300);
+      setTimeout(startParty, 1100);
     }
+  }
+
+  // ---------- Bottle open animation ----------
+  function openBottle() {
+    const board = document.getElementById('board');
+    const boardRect = board.getBoundingClientRect();
+
+    // Cap geometry — derived from board target frame
+    const frameW = pieceW * COLS;
+    const frameH = pieceH * ROWS;
+    const frameLeft = boardRect.left + boardOriginX;
+    const frameTop = boardRect.top + boardOriginY;
+
+    // Bottle cap position on bottle image (empirical for the Heineken bottle PNG)
+    // Cap centre ≈ horizontal middle, ~5.5% from top of image. Cap radius ≈ 8.5% of image width.
+    const capCx = frameLeft + frameW * 0.5;
+    const capCy = frameTop + frameH * 0.055;
+    const capR = frameW * 0.085;
+    const capSize = capR * 2;
+
+    // Build SVG cap with serrated edge + Heineken-style star
+    const serrations = 24;
+    const innerR = 40;
+    const outerR = 47;
+    let serrPath = '';
+    for (let i = 0; i < serrations; i++) {
+      const a1 = (i / serrations) * Math.PI * 2;
+      const a2 = ((i + 0.5) / serrations) * Math.PI * 2;
+      const x1 = Math.cos(a1) * outerR;
+      const y1 = Math.sin(a1) * outerR;
+      const x2 = Math.cos(a2) * innerR;
+      const y2 = Math.sin(a2) * innerR;
+      serrPath += `${i === 0 ? 'M' : 'L'} ${x1.toFixed(2)} ${y1.toFixed(2)} L ${x2.toFixed(2)} ${y2.toFixed(2)} `;
+    }
+    serrPath += 'Z';
+
+    const capSVG = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100" width="${capSize}" height="${capSize}">
+        <defs>
+          <radialGradient id="capGrad" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#ff5b50"/>
+            <stop offset="60%" stop-color="#e2231a"/>
+            <stop offset="100%" stop-color="#8a0d07"/>
+          </radialGradient>
+        </defs>
+        <path d="${serrPath}" fill="url(#capGrad)" stroke="rgba(0,0,0,0.4)" stroke-width="0.8"/>
+        <circle r="36" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="0.8"/>
+        <circle r="30" fill="none" stroke="rgba(0,0,0,0.18)" stroke-width="0.6"/>
+        <!-- Heineken white star -->
+        <polygon points="0,-18 5.3,-5.6 18,-5.6 7.3,3.5 11.1,16.6 0,8.7 -11.1,16.6 -7.3,3.5 -18,-5.6 -5.3,-5.6" fill="white" opacity="0.95"/>
+        <!-- highlight glint -->
+        <ellipse cx="-15" cy="-22" rx="11" ry="6" fill="white" opacity="0.35" transform="rotate(-25)"/>
+      </svg>
+    `;
+
+    const cap = document.createElement('div');
+    cap.className = 'bottle-cap';
+    cap.style.left = `${capCx - capR}px`;
+    cap.style.top = `${capCy - capR}px`;
+    cap.style.width = `${capSize}px`;
+    cap.style.height = `${capSize}px`;
+    cap.innerHTML = capSVG;
+    document.body.appendChild(cap);
+
+    // Trigger animation next frame so opacity transition kicks in cleanly
+    requestAnimationFrame(() => cap.classList.add('show'));
+
+    playPop();
+
+    // Foam bursts from the neck slightly after cap clears (around 250ms)
+    setTimeout(() => spawnFoam(capCx, capCy + capR * 0.8), 220);
+    setTimeout(() => spawnFoam(capCx, capCy + capR * 1.2), 420);
+    setTimeout(() => spawnFoam(capCx, capCy + capR * 1.5), 620);
+
+    // Cleanup cap after animation
+    setTimeout(() => cap.remove(), 2000);
+  }
+
+  function spawnFoam(centerX, centerY) {
+    const layer = document.getElementById('foamLayer');
+    const count = 14;
+    for (let i = 0; i < count; i++) {
+      const blob = document.createElement('div');
+      blob.className = 'foam-blob';
+      const size = 18 + Math.random() * 32;
+      const offsetX = (Math.random() - 0.5) * 40;
+      const drift = (Math.random() - 0.5) * 80;
+      blob.style.width = `${size}px`;
+      blob.style.height = `${size}px`;
+      blob.style.left = `${centerX - size / 2 + offsetX}px`;
+      blob.style.top = `${centerY - size / 2}px`;
+      blob.style.setProperty('--fx', `${drift}px`);
+      blob.style.animationDelay = `${Math.random() * 0.12}s`;
+      layer.appendChild(blob);
+      setTimeout(() => blob.remove(), 2700);
+    }
+  }
+
+  // POP sound: short noise burst + low-frequency thump
+  function playPop() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const now = ctx.currentTime;
+
+      // Thump: low sine drop
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+      oscGain.gain.setValueAtTime(0, now);
+      oscGain.gain.linearRampToValueAtTime(0.35, now + 0.005);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(oscGain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+
+      // Noise burst for the "psssh" carbonation
+      const bufferSize = ctx.sampleRate * 0.25;
+      const noiseBuf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = noiseBuf.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.6;
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuf;
+      const noiseGain = ctx.createGain();
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1200;
+      noiseGain.gain.setValueAtTime(0.0001, now);
+      noiseGain.gain.linearRampToValueAtTime(0.15, now + 0.02);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+      noise.connect(hp).connect(noiseGain).connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 0.26);
+
+      setTimeout(() => { try { ctx.close(); } catch(_){} }, 800);
+    } catch (_) { /* silent */ }
   }
 
   // ---------- Party time ----------
