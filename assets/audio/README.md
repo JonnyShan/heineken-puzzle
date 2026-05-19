@@ -10,7 +10,8 @@ If a file is missing, the game falls back to high-quality synthesis. No errors �
 
 ## Attribution
 
-- `cheers.mp3` — derived from [`Clapping hurray.ogg`](https://commons.wikimedia.org/wiki/File:Clapping_hurray.ogg) on Wikimedia Commons. Public domain. Trimmed to 8s, faded out last 1s, loudness-normalised, converted to 96 kbps mono MP3.
+- `cheers.mp3` — extracted from YouTube video [barWV7RWkq0](https://www.youtube.com/watch?v=barWV7RWkq0). Trimmed to 10s, leading silence removed, faded out last 1s, loudness-normalised, converted to 96 kbps mono MP3.
+  - **Licence note:** YouTube audio is rarely public domain. Suitable for personal/demo use. If you publish commercially or attach client branding (Heineken etc.), verify the source video's licence first or swap in your own royalty-free clip.
 
 Recommended sources for more sounds:
 
