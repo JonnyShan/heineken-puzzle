@@ -41,6 +41,7 @@
     background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));
     z-index: 100;
     pointer-events: none;
+    gap: 12px;
   }
 
   .brand {
@@ -66,6 +67,92 @@
     border-radius: 999px;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+  }
+
+  .controls {
+    display: flex; gap: 8px; align-items: center;
+    pointer-events: auto;
+  }
+  .ctrl-btn {
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: white;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font: 600 13px var(--font);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: background 160ms ease, border-color 160ms ease, transform 80ms ease;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .ctrl-btn:hover { background: rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.35); }
+  .ctrl-btn:active { transform: scale(0.94); }
+  .ctrl-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .ctrl-btn.active { background: var(--hk-red); border-color: var(--hk-red); }
+  .ctrl-btn .count { opacity: 0.75; font-weight: 400; }
+
+  /* Snap success glow */
+  .snap-glow {
+    position: fixed;
+    border: 3px solid #5cffb1;
+    border-radius: 6px;
+    box-shadow: 0 0 28px 6px rgba(92,255,177,0.65), inset 0 0 14px rgba(92,255,177,0.4);
+    pointer-events: none;
+    z-index: 450;
+    animation: snap-glow 650ms ease-out forwards;
+  }
+  @keyframes snap-glow {
+    0%   { opacity: 0; transform: scale(0.85); }
+    25%  { opacity: 1; transform: scale(1.12); }
+    100% { opacity: 0; transform: scale(1.02); }
+  }
+
+  /* Hint slot pulse */
+  .hint-pulse {
+    position: absolute;
+    border: 3px dashed #ffd700;
+    border-radius: 6px;
+    box-shadow: 0 0 30px 8px rgba(255,215,0,0.6), inset 0 0 18px rgba(255,215,0,0.45);
+    pointer-events: none;
+    z-index: 80;
+    animation: hint-pulse 2200ms ease-out forwards;
+    background: rgba(255,215,0,0.10);
+  }
+  @keyframes hint-pulse {
+    0%   { opacity: 0; transform: scale(0.9); }
+    18%  { opacity: 1; transform: scale(1.08); }
+    50%  { opacity: 0.8; transform: scale(1.02); }
+    100% { opacity: 0; transform: scale(1.04); }
+  }
+
+  /* Toast (share confirmation) */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.18);
+    font: 600 14px var(--font);
+    letter-spacing: 0.04em;
+    z-index: 800;
+    opacity: 0;
+    transition: opacity 240ms ease, transform 240ms ease;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Piece rotation handle indicator on hover (hard mode) */
+  .piece.rotatable:not(.locked):not(.dragging):hover {
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.45)) drop-shadow(0 0 8px rgba(255,215,0,0.5));
   }
 
   main {
@@ -296,15 +383,24 @@
   }
 
   /* Mobile: stack panels vertically when narrow */
+  @media (max-width: 900px) {
+    .ctrl-btn { font-size: 11px; padding: 6px 10px; letter-spacing: 0.02em; }
+    .ctrl-btn .count { display: inline; }
+  }
   @media (max-width: 700px) {
     main { flex-direction: column; }
     .tray, .board { flex: 1 1 50%; }
     .tray { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.2); }
-    header { height: 52px; padding: 0 14px; }
-    .brand { font-size: 18px; }
+    header {
+      height: auto; min-height: 52px; padding: 8px 12px;
+      flex-wrap: wrap; gap: 6px;
+    }
+    .brand { font-size: 16px; }
     .brand .star { width: 18px; height: 18px; }
-    .timer { font-size: 16px; padding: 4px 10px; }
-    main { top: 52px; }
+    .timer { font-size: 14px; padding: 4px 10px; }
+    .controls { gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
+    .ctrl-btn { font-size: 10px; padding: 5px 8px; }
+    main { top: 108px; }
   }
 </style>
 </head>
@@ -316,9 +412,23 @@
       <path d="M12 2 L14.7 9.5 L22.5 9.5 L16.2 14.2 L18.6 21.6 L12 17.1 L5.4 21.6 L7.8 14.2 L1.5 9.5 L9.3 9.5 Z"/>
     </svg>
     <span class="word">Heineken</span>
-    <span style="opacity:.6; font-weight:400; font-size:14px; margin-left:6px; letter-spacing:.12em;">JIGSAW</span>
+    <span style="opacity:.6; font-weight:400; font-size:14px; margin-left:6px; letter-spacing:.12em;" id="modeBadge">JIGSAW</span>
   </div>
-  <div class="timer" id="timer">00:00</div>
+  <div class="controls">
+    <button class="ctrl-btn" id="hintBtn" title="Show me where a piece goes">
+      💡 HINT <span class="count" id="hintCount">3</span>
+    </button>
+    <button class="ctrl-btn" id="hardBtn" title="Toggle rotation mode — pieces start at random angles, tap to rotate 90°">
+      🔄 HARD
+    </button>
+    <button class="ctrl-btn" id="dailyBtn" title="Daily challenge — same scramble for everyone today">
+      📅 DAILY
+    </button>
+    <button class="ctrl-btn" id="restartBtn" title="Restart with a fresh scramble">
+      ↻ RESTART
+    </button>
+    <div class="timer" id="timer">00:00</div>
+  </div>
 </header>
 
 <main>
@@ -348,6 +458,10 @@
     </svg>
     <h1>Solved</h1>
     <p id="winTime">00:00</p>
+    <div style="display:flex; gap:8px; justify-content:center; margin-top:18px;">
+      <button class="ctrl-btn" id="shareBtn">📤 SHARE</button>
+      <button class="ctrl-btn" id="playAgainBtn">▶ PLAY AGAIN</button>
+    </div>
   </div>
 </div>
 
@@ -360,6 +474,9 @@
   const SNAP_FRACTION = 0.40;        // snap if pointer within 40% of piece size from correct centre (forgiving)
   const TAB_DEPTH = 0.20;            // fraction of piece edge length
   const PRE_SOLVED_FRACTION = 0.30;  // start with 30% of pieces already placed
+  const HINT_COUNT = 3;              // hints allowed per game
+  const ROTATE_TAP_PX = 6;           // pointer must move less than this to count as a tap (not drag)
+  const ROTATE_TAP_MS = 220;         // and held less than this duration
   let SNAP_THRESHOLD = 28;           // recomputed once pieces are sized
 
   // ---------- State ----------
@@ -376,9 +493,38 @@
   let timerHandle = null;
   let timerRunning = false;
 
+  // Mode flags
+  let hardMode = false;     // rotation enabled
+  let dailyMode = false;    // seeded RNG by date
+  let hintsLeft = HINT_COUNT;
+  let solveTimeMs = 0;      // final time for share
+
+  // Seeded RNG (mulberry32). When dailyMode is on, all randomness uses this.
+  let _seedState = 0;
+  function seedRng(seed) { _seedState = (seed >>> 0) || 1; }
+  function srand() {
+    _seedState |= 0; _seedState = (_seedState + 0x6D2B79F5) | 0;
+    let t = Math.imul(_seedState ^ (_seedState >>> 15), 1 | _seedState);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function rngRandom() { return dailyMode ? srand() : Math.random(); }
+  function dailySeed() {
+    const d = new Date();
+    // Use NZ local date YYYYMMDD as seed
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return parseInt(`${y}${m}${day}`, 10);
+  }
+  function dailyLabel() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
   // ---------- Utilities ----------
   const rand = (min, max) => Math.random() * (max - min) + min;
-  const randSign = () => Math.random() < 0.5 ? -1 : 1;
+  const randSign = () => rngRandom() < 0.5 ? -1 : 1;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
   function fmtTime(ms) {
@@ -640,17 +786,23 @@
         const homeY = boardOriginY + r * pieceH - tabDepth;
 
         // Random scatter position in tray (in tray panel coords)
-        const sx = clamp(Math.random() * (trayWidth - bbW), trayOriginX, trayOriginX + trayWidth - bbW);
-        const sy = clamp(Math.random() * (trayHeight - bbH), trayOriginY, trayOriginY + trayHeight - bbH);
+        const sx = clamp(rngRandom() * (trayWidth - bbW), trayOriginX, trayOriginX + trayWidth - bbW);
+        const sy = clamp(rngRandom() * (trayHeight - bbH), trayOriginY, trayOriginY + trayHeight - bbH);
+
+        // Initial rotation: 0 in normal mode; random 90° increment in hard mode
+        const rotDeg = hardMode ? (Math.floor(rngRandom() * 4) * 90) : 0;
 
         const piece = {
           id, r, c, el: wrapper,
           bbW, bbH,
           homeX, homeY,
           x: sx, y: sy,
+          rot: rotDeg,        // current rotation in degrees (multiple of 90)
           parent: 'tray',     // 'tray' or 'board'
           locked: false
         };
+
+        if (hardMode) wrapper.classList.add('rotatable');
 
         positionPiece(piece);
         attachDrag(piece);
@@ -690,9 +842,14 @@
     }
   }
 
-  // Position piece via transform translate, in its current parent's coordinate space
+  // Position piece via transform translate (and rotation, in hard mode)
   function positionPiece(piece) {
-    piece.el.style.transform = `translate(${piece.x}px, ${piece.y}px)`;
+    if (piece.rot) {
+      piece.el.style.transform = `translate(${piece.x}px, ${piece.y}px) rotate(${piece.rot}deg)`;
+      piece.el.style.transformOrigin = '50% 50%';
+    } else {
+      piece.el.style.transform = `translate(${piece.x}px, ${piece.y}px)`;
+    }
   }
 
   // Move a piece between tray and board DOM (preserving visual position)
@@ -725,6 +882,8 @@
     let pointerId = null;
     let startPointerX = 0, startPointerY = 0;
     let startPieceX = 0, startPieceY = 0;
+    let downTime = 0;
+    let moved = false;
 
     el.addEventListener('pointerdown', onDown);
 
@@ -732,6 +891,8 @@
       if (piece.locked) return;
       e.preventDefault();
       active = true;
+      moved = false;
+      downTime = performance.now();
       pointerId = e.pointerId;
       el.setPointerCapture(pointerId);
       el.classList.add('dragging');
@@ -761,6 +922,7 @@
       if (!active) return;
       const dx = e.clientX - startPointerX;
       const dy = e.clientY - startPointerY;
+      if (!moved && Math.hypot(dx, dy) > ROTATE_TAP_PX) moved = true;
       piece.x = startPieceX + dx;
       piece.y = startPieceY + dy;
       positionPiece(piece);
@@ -775,8 +937,28 @@
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
 
-      // While in drag-layer, piece.x/.y are in PAGE coords.
-      // Compute target home position in PAGE coords.
+      const elapsed = performance.now() - downTime;
+
+      // Hard mode: tap without drag → rotate 90° in place
+      if (hardMode && !moved && elapsed < ROTATE_TAP_MS) {
+        const trayRect = document.getElementById('tray').getBoundingClientRect();
+        const boardRect = document.getElementById('board').getBoundingClientRect();
+        const overBoard = e.clientX >= boardRect.left && e.clientX <= boardRect.right &&
+                          e.clientY >= boardRect.top && e.clientY <= boardRect.bottom;
+        const target = overBoard ? 'board' : 'tray';
+        // Convert piece.x/y from page (drag layer) back into target panel coords.
+        // reparentFromDragLayer does that conversion.
+        reparentFromDragLayer(piece, target);
+        piece.rot = (piece.rot + 90) % 360;
+        const panelRect = (target === 'board' ? boardRect : trayRect);
+        piece.x = clamp(piece.x, 4, panelRect.width - piece.bbW - 4);
+        piece.y = clamp(piece.y, 4, panelRect.height - piece.bbH - 4);
+        positionPiece(piece);
+        if (navigator.vibrate) navigator.vibrate(12);
+        return;
+      }
+
+      // Normal drop logic
       const boardRect = document.getElementById('board').getBoundingClientRect();
       const trayRect = document.getElementById('tray').getBoundingClientRect();
       const homePageX = boardRect.left + piece.homeX;
@@ -788,29 +970,30 @@
       const homeCentreY = homePageY + piece.bbH / 2;
       const dist = Math.hypot(pieceCentreX - homeCentreX, pieceCentreY - homeCentreY);
 
-      if (dist <= SNAP_THRESHOLD) {
-        // Snap to home: animate to homePage coords (still in drag layer), then commit to board parent and unlock styling
+      // Snap requires both position close AND rotation correct (0°)
+      const rotCorrect = (piece.rot % 360) === 0;
+
+      if (dist <= SNAP_THRESHOLD && rotCorrect) {
+        // Snap to home
         el.classList.add('snap-anim');
         piece.x = homePageX;
         piece.y = homePageY;
         positionPiece(piece);
         setTimeout(() => {
-          // Reparent to board
           reparentFromDragLayer(piece, 'board');
-          // After reparent, piece is at correct homeX/homeY in board coords
           piece.locked = true;
           el.classList.remove('snap-anim');
           el.classList.add('locked');
           solvedCount++;
+          spawnSnapGlow(homePageX, homePageY, piece.bbW, piece.bbH);
+          if (navigator.vibrate) navigator.vibrate(30);
           checkWin();
         }, 200);
       } else {
-        // Decide which panel pointer ended over (for nice handoff)
         const ux = e.clientX, uy = e.clientY;
         const overBoard = ux >= boardRect.left && ux <= boardRect.right && uy >= boardRect.top && uy <= boardRect.bottom;
         const target = overBoard ? 'board' : 'tray';
 
-        // Reparent to that panel and clamp inside its bounds
         reparentFromDragLayer(piece, target);
         const panelRect = (target === 'board' ? boardRect : trayRect);
         piece.x = clamp(piece.x, 4, panelRect.width - piece.bbW - 4);
@@ -820,6 +1003,18 @@
         setTimeout(() => el.classList.remove('return-anim'), 360);
       }
     }
+  }
+
+  // Green snap flash at the lock position (page coords)
+  function spawnSnapGlow(pageX, pageY, w, h) {
+    const glow = document.createElement('div');
+    glow.className = 'snap-glow';
+    glow.style.left = `${pageX}px`;
+    glow.style.top = `${pageY}px`;
+    glow.style.width = `${w}px`;
+    glow.style.height = `${h}px`;
+    document.body.appendChild(glow);
+    setTimeout(() => glow.remove(), 700);
   }
 
   // Move piece into <body> drag layer so it's not clipped by panel overflow
@@ -863,8 +1058,12 @@
   function checkWin() {
     if (solvedCount === ROWS * COLS) {
       stopTimer();
+      solveTimeMs = performance.now() - timerStart;
       const finalText = document.getElementById('timer').textContent;
-      document.getElementById('winTime').textContent = `Solved in ${finalText}`;
+      let label = `Solved in ${finalText}`;
+      if (dailyMode) label += ` · Daily ${dailyLabel()}`;
+      if (hardMode) label += ' · Hard';
+      document.getElementById('winTime').textContent = label;
       // 1. Beat for last snap settle
       // 2. Bottle opens (cap flies off, foam spurts)
       // 3. Confetti + emoji + fanfare
@@ -1022,12 +1221,23 @@
     spawnEmojiBursts();
     playFanfare();
 
-    // Click overlay to dismiss party
-    overlay.addEventListener('click', () => {
+    // Wire share + play-again buttons (re-wire each win in case overlay was dismissed)
+    const shareBtn = document.getElementById('shareBtn');
+    const playAgainBtn = document.getElementById('playAgainBtn');
+    const newShare = shareBtn.cloneNode(true);
+    const newPlay = playAgainBtn.cloneNode(true);
+    shareBtn.parentNode.replaceChild(newShare, shareBtn);
+    playAgainBtn.parentNode.replaceChild(newPlay, playAgainBtn);
+    newShare.addEventListener('click', (e) => { e.stopPropagation(); shareResult(); });
+    newPlay.addEventListener('click', (e) => { e.stopPropagation(); restartGame(); });
+
+    // Click overlay (outside card) to dismiss party
+    overlay.addEventListener('click', (e) => {
+      if (e.target.closest('.win-card')) return; // ignore card clicks
       overlay.classList.remove('visible', 'party');
       document.body.classList.remove('party');
       stopConfetti();
-    }, { once: true });
+    });
   }
 
   // -- Confetti --
@@ -1224,6 +1434,8 @@
       document.body.appendChild(msg);
       return;
     }
+    wireControls();
+    updateHintBtn();
     buildEdges();
     buildPieces();
   }
@@ -1238,6 +1450,126 @@
     }, 200);
   });
 
+  // ---------- Restart ----------
+  function restartGame(opts = {}) {
+    // Tear down DOM
+    document.getElementById('trayStage').innerHTML = '';
+    document.getElementById('boardStage').querySelectorAll('.piece').forEach(p => p.remove());
+    // Cancel ongoing animations
+    document.querySelectorAll('.bottle-cap, .foam-blob, .snap-glow, .hint-pulse, .emoji-pop').forEach(n => n.remove());
+    stopConfetti();
+    document.body.classList.remove('party');
+    document.getElementById('winOverlay').classList.remove('visible', 'party');
+
+    // Reset state
+    pieces = [];
+    solvedCount = 0;
+    hintsLeft = HINT_COUNT;
+    updateHintBtn();
+    solveTimeMs = 0;
+
+    // Reset timer
+    if (timerRunning) clearInterval(timerHandle);
+    timerRunning = false;
+    timerStart = 0;
+    document.getElementById('timer').textContent = '00:00';
+
+    // Apply mode flags from opts (or current)
+    if ('hard' in opts) hardMode = opts.hard;
+    if ('daily' in opts) dailyMode = opts.daily;
+
+    // Re-seed if daily
+    if (dailyMode) seedRng(dailySeed());
+
+    // Mode badge text
+    const badge = document.getElementById('modeBadge');
+    const labels = [];
+    if (dailyMode) labels.push(`DAILY ${dailyLabel()}`);
+    if (hardMode) labels.push('HARD');
+    badge.textContent = labels.length ? labels.join(' · ') : 'JIGSAW';
+
+    // Active states
+    document.getElementById('hardBtn').classList.toggle('active', hardMode);
+    document.getElementById('dailyBtn').classList.toggle('active', dailyMode);
+
+    // Rebuild
+    buildEdges();
+    buildPieces();
+  }
+
+  // ---------- Hint ----------
+  function requestHint() {
+    if (hintsLeft <= 0) return;
+    const unplaced = pieces.filter(p => !p.locked);
+    if (unplaced.length === 0) return;
+    const target = unplaced[Math.floor(rngRandom() * unplaced.length)];
+    flashSlot(target);
+    hintsLeft--;
+    updateHintBtn();
+  }
+  function updateHintBtn() {
+    const btn = document.getElementById('hintBtn');
+    document.getElementById('hintCount').textContent = hintsLeft;
+    btn.disabled = hintsLeft <= 0;
+  }
+  function flashSlot(piece) {
+    // Place pulse rect inside boardStage at piece.homeX/homeY relative to stage
+    const stage = document.getElementById('boardStage');
+    const pulse = document.createElement('div');
+    pulse.className = 'hint-pulse';
+    pulse.style.left = `${piece.homeX}px`;
+    pulse.style.top = `${piece.homeY}px`;
+    pulse.style.width = `${piece.bbW}px`;
+    pulse.style.height = `${piece.bbH}px`;
+    stage.appendChild(pulse);
+    setTimeout(() => pulse.remove(), 2300);
+  }
+
+  // ---------- Share ----------
+  function buildShareText() {
+    const url = location.origin + location.pathname;
+    const time = document.getElementById('timer').textContent;
+    let prefix = 'Heineken Jigsaw';
+    if (dailyMode) prefix += ` Daily ${dailyLabel()}`;
+    if (hardMode) prefix += ' (Hard)';
+    return `${prefix} — solved in ${time} 🍻\n${url}`;
+  }
+  async function shareResult() {
+    const text = buildShareText();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Heineken Jigsaw', text });
+        return;
+      }
+    } catch (_) { /* user cancelled or unsupported */ }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Copied to clipboard');
+    } catch (_) {
+      // Fallback: prompt
+      window.prompt('Copy this:', text);
+    }
+  }
+  function showToast(msg) {
+    let t = document.querySelector('.toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.className = 'toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  // ---------- Controls wiring ----------
+  function wireControls() {
+    document.getElementById('restartBtn').addEventListener('click', () => restartGame());
+    document.getElementById('hintBtn').addEventListener('click', requestHint);
+    document.getElementById('hardBtn').addEventListener('click', () => restartGame({ hard: !hardMode }));
+    document.getElementById('dailyBtn').addEventListener('click', () => restartGame({ daily: !dailyMode }));
+  }
+
   // Dev shortcut: press "W" to auto-solve (preview party).
   // Press "C" to fire confetti standalone without affecting puzzle state.
   window.addEventListener('keydown', (e) => {
@@ -1248,15 +1580,13 @@
         p.parent = 'board';
         p.x = p.homeX;
         p.y = p.homeY;
+        p.rot = 0;
         p.locked = true;
         p.el.classList.add('locked');
         positionPiece(p);
         solvedCount++;
       });
-      stopTimer();
-      const finalText = document.getElementById('timer').textContent;
-      document.getElementById('winTime').textContent = `Solved in ${finalText}`;
-      setTimeout(startParty, 200);
+      checkWin(); // triggers bottle-open + party via standard sequence
     } else if (e.key === 'c' || e.key === 'C') {
       fireConfetti();
       spawnEmojiBursts();
