@@ -214,8 +214,9 @@
     list-style: none; margin: 0; padding: 0;
     flex: 1; overflow-y: auto;
     border-top: 2px solid rgba(0,0,0,0.15);
-    pointer-events: auto;
+    pointer-events: none;  /* auto only when tray.show-lb — pieces stay draggable during play */
   }
+  .tray.show-lb .lb-sidebar-list { pointer-events: auto; }
   .lb-sidebar-list::-webkit-scrollbar { width: 8px; }
   .lb-sidebar-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.20); border-radius: 4px; }
   .lb-sidebar-list li {
