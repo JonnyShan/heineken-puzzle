@@ -23,70 +23,92 @@
 
   html, body {
     margin: 0; padding: 0;
-    height: 100%;
-    background: radial-gradient(ellipse at top, #1a1f1c 0%, var(--bg) 60%, #050706 100%);
+    height: 100%; width: 100%;
+    background: #050706;
     color: #fff;
     font-family: var(--font);
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Phone-shaped stage. Centered on desktop with dark surround; edge-to-edge on mobile. */
+  #stage {
+    position: relative;
+    width: min(100vw, 430px);
+    height: min(100vh, 932px);
+    overflow: hidden;
+    background: radial-gradient(ellipse at top, #1a1f1c 0%, var(--bg) 60%, #050706 100%);
+    border-radius: 28px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.7), 0 0 0 2px rgba(255,255,255,0.05);
+  }
+  @media (max-width: 500px) {
+    #stage {
+      width: 100vw; height: 100vh;
+      border-radius: 0;
+      box-shadow: none;
+    }
   }
 
   header {
-    position: fixed; top: 0; left: 0; right: 0;
-    height: 64px;
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 60px;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));
+    padding: 0 12px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.75), rgba(0,0,0,0));
     z-index: 100;
     pointer-events: none;
-    gap: 12px;
+    gap: 8px;
   }
 
   .brand {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 6px;
     font-weight: 700; letter-spacing: 0.04em;
-    font-size: 22px;
+    font-size: 15px;
+    white-space: nowrap;
   }
   .brand .star {
-    width: 22px; height: 22px;
+    width: 17px; height: 17px;
     color: var(--hk-red);
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6));
   }
   .brand .word { font-style: italic; font-family: 'Georgia', serif; }
+  #modeBadge { display: none; }  /* subtitle hidden on phone-width to save space */
 
   .timer {
     font-variant-numeric: tabular-nums;
     font-weight: 600;
-    font-size: 20px;
-    letter-spacing: 0.06em;
-    padding: 6px 14px;
-    background: rgba(0,0,0,0.45);
-    border: 1px solid rgba(255,255,255,0.12);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    padding: 4px 9px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.14);
     border-radius: 999px;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
   }
 
   .controls {
-    display: flex; gap: 8px; align-items: center;
+    display: flex; gap: 3px; align-items: center;
     pointer-events: auto;
   }
   .ctrl-btn {
-    background: rgba(0,0,0,0.45);
+    background: rgba(0,0,0,0.55);
     border: 1px solid rgba(255,255,255,0.18);
     color: white;
-    padding: 7px 14px;
+    padding: 5px 7px;
     border-radius: 999px;
     cursor: pointer;
-    font: 600 13px var(--font);
-    letter-spacing: 0.06em;
+    font: 600 10px var(--font);
+    letter-spacing: 0.02em;
     text-transform: uppercase;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     transition: background 160ms ease, border-color 160ms ease, transform 80ms ease;
-    display: inline-flex; align-items: center; gap: 6px;
+    display: inline-flex; align-items: center; gap: 3px;
+    line-height: 1;
   }
   .ctrl-btn:hover { background: rgba(0,0,0,0.7); border-color: rgba(255,255,255,0.35); }
   .ctrl-btn:active { transform: scale(0.94); }
@@ -96,7 +118,7 @@
 
   /* Snap success glow */
   .snap-glow {
-    position: fixed;
+    position: absolute;
     border: 3px solid #5cffb1;
     border-radius: 6px;
     box-shadow: 0 0 28px 6px rgba(92,255,177,0.65), inset 0 0 14px rgba(92,255,177,0.4);
@@ -130,7 +152,7 @@
 
   /* Toast (share confirmation) */
   .toast {
-    position: fixed;
+    position: absolute;
     bottom: 24px; left: 50%;
     transform: translateX(-50%) translateY(20px);
     background: rgba(0,0,0,0.85);
@@ -157,28 +179,34 @@
 
   main {
     position: absolute;
-    top: 64px; bottom: 0; left: 0; right: 0;
+    top: 60px; bottom: 0; left: 0; right: 0;
     display: flex;
+    flex-direction: column;   /* phone-portrait: board on top, tray below */
   }
 
   .tray, .board {
     position: relative;
-    flex: 1 1 50%;
     overflow: hidden;
   }
+  .board {
+    flex: 1 1 58%;
+    order: 1;
+  }
   .tray {
+    flex: 0 0 42%;
+    order: 2;
     background:
       radial-gradient(ellipse at 30% 20%, #ffffff 0%, var(--tray-bg) 60%, #e6e1d4 100%);
-    border-right: 1px solid rgba(0,0,0,0.2);
+    border-top: 1px solid rgba(0,0,0,0.2);
     color: #1f2a25;
   }
 
-  /* Leaderboard sidebar — hidden during play, fades in after win. ~2.5–3× larger for readability */
+  /* Leaderboard sidebar — hidden during play, fades in after win. Sized for phone-width tray */
   .lb-sidebar {
     position: absolute; inset: 0;
     z-index: 1;
     pointer-events: none;
-    padding: 44px 40px;
+    padding: 14px 16px;
     display: flex; flex-direction: column;
     color: #1f2a25;
     font-family: var(--font);
@@ -191,23 +219,23 @@
     pointer-events: auto;
   }
   .lb-sidebar-header {
-    display: flex; align-items: center; gap: 18px;
-    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 4px;
   }
   .lb-sidebar-header svg.star {
-    width: 56px; height: 56px; color: var(--hk-red);
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    width: 22px; height: 22px; color: var(--hk-red);
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
   }
   .lb-sidebar-title {
     font-family: 'Georgia', serif; font-style: italic;
-    font-size: 56px; letter-spacing: 0.02em;
+    font-size: 22px; letter-spacing: 0.02em;
     color: var(--hk-green-dark);
     line-height: 1;
   }
   .lb-sidebar-sub {
-    font-size: 18px; letter-spacing: 0.22em; text-transform: uppercase;
+    font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
     color: rgba(0,0,0,0.55);
-    margin-bottom: 18px;
+    margin-bottom: 6px;
     font-weight: 600;
   }
   .lb-sidebar-list {
@@ -221,26 +249,26 @@
   .lb-sidebar-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.20); border-radius: 4px; }
   .lb-sidebar-list li {
     display: grid;
-    grid-template-columns: 60px 1fr auto;
+    grid-template-columns: 24px 1fr auto;
     align-items: center;
-    gap: 18px;
-    padding: 18px 12px;
-    border-bottom: 1px solid rgba(0,0,0,0.10);
-    font-size: 26px; letter-spacing: 0.04em;
+    gap: 8px;
+    padding: 5px 4px;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    font-size: 12px; letter-spacing: 0.03em;
     font-variant-numeric: tabular-nums;
     color: #1f2a25;
   }
   .lb-sidebar-list li:last-child { border-bottom: none; }
   .lb-sidebar-list li.me {
     background: linear-gradient(90deg, rgba(226,35,26,0.18), rgba(226,35,26,0));
-    border-left: 6px solid var(--hk-red);
-    padding-left: 6px;
+    border-left: 3px solid var(--hk-red);
+    padding-left: 3px;
   }
   .lb-sidebar-list .rank {
     font-weight: 700; opacity: 0.55; text-align: center;
-    font-size: 32px;
+    font-size: 13px;
   }
-  .lb-sidebar-list li.gold .rank   { color: #c79b00; opacity: 1; text-shadow: 0 0 10px rgba(255,215,0,0.55); }
+  .lb-sidebar-list li.gold .rank   { color: #c79b00; opacity: 1; text-shadow: 0 0 6px rgba(255,215,0,0.5); }
   .lb-sidebar-list li.silver .rank { color: #6b6b6b; opacity: 1; }
   .lb-sidebar-list li.bronze .rank { color: #a05a1c; opacity: 1; }
   .lb-sidebar-list .name {
@@ -249,37 +277,16 @@
   }
   .lb-sidebar-list .time {
     opacity: 0.75; font-weight: 600;
-    font-size: 28px;
+    font-size: 12px;
   }
-  .lb-sidebar-list .mode-pill {
-    display: inline-block;
-    font-size: 13px; opacity: 0.65; text-transform: uppercase;
-    margin-left: 12px; padding: 3px 10px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.08);
-    color: rgba(0,0,0,0.7);
-    letter-spacing: 0.12em; font-weight: 700;
-    vertical-align: middle;
-  }
+  .lb-sidebar-list .mode-pill { display: none; }  /* saves horizontal room on phone */
   .lb-sidebar-footer {
-    margin-top: 18px; padding-top: 14px;
+    margin-top: 6px; padding-top: 6px;
     border-top: 1px solid rgba(0,0,0,0.08);
-    font-size: 14px; letter-spacing: 0.18em;
+    font-size: 8px; letter-spacing: 0.16em;
     color: rgba(0,0,0,0.45);
     text-transform: uppercase; text-align: center;
     font-weight: 600;
-  }
-  /* Mobile dial-back so it still fits */
-  @media (max-width: 700px) {
-    .lb-sidebar { padding: 18px 16px; }
-    .lb-sidebar-header svg.star { width: 28px; height: 28px; }
-    .lb-sidebar-title { font-size: 26px; }
-    .lb-sidebar-sub { font-size: 11px; margin-bottom: 8px; }
-    .lb-sidebar-list li { font-size: 14px; padding: 8px 6px; grid-template-columns: 32px 1fr auto; gap: 8px; }
-    .lb-sidebar-list .rank { font-size: 16px; }
-    .lb-sidebar-list .time { font-size: 14px; }
-    .lb-sidebar-list .mode-pill { display: none; }
-    .lb-sidebar-footer { font-size: 10px; }
   }
   /* On narrow mobile, sidebar tucks above the tray pieces, keeps small */
   @media (max-width: 700px) {
@@ -354,7 +361,7 @@
 
   /* Dim backdrop (below confetti) */
   .win-dim {
-    position: fixed; inset: 0;
+    position: absolute; inset: 0;
     background: radial-gradient(ellipse at center, rgba(0,0,0,0.30), rgba(0,0,0,0.70));
     opacity: 0;
     pointer-events: none;
@@ -365,7 +372,7 @@
 
   /* Win card container (above confetti) */
   .win-overlay {
-    position: fixed; inset: 0;
+    position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     opacity: 0;
     pointer-events: none;
@@ -512,7 +519,7 @@
 
   /* Bottle cap overlay (rendered above board after win) */
   .bottle-cap {
-    position: fixed;
+    position: absolute;
     z-index: 540;
     pointer-events: none;
     will-change: transform, opacity;
@@ -535,7 +542,7 @@
 
   /* Foam burst from bottle neck */
   .foam-layer {
-    position: fixed;
+    position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 530;
@@ -559,7 +566,7 @@
 
   /* Confetti canvas — drawn above dim backdrop, BELOW the win card */
   #confetti {
-    position: fixed;
+    position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
@@ -569,7 +576,7 @@
 
   /* Floating emoji burst (between confetti and dim) */
   .emoji-layer {
-    position: fixed;
+    position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 610;
@@ -585,13 +592,13 @@
   @keyframes float-up {
     0%   { transform: translateY(0)    rotate(0deg)   scale(0.4); opacity: 0; }
     15%  { transform: translateY(-30px) rotate(8deg)  scale(1.1); opacity: 1; }
-    100% { transform: translateY(-90vh) rotate(540deg) scale(0.9); opacity: 0; }
+    100% { transform: translateY(-900px) rotate(540deg) scale(0.9); opacity: 0; }
   }
 
   /* Disco strobe lights */
   body.party::before {
     content: "";
-    position: fixed; inset: 0;
+    position: absolute; inset: 0;
     z-index: 400;
     pointer-events: none;
     background:
@@ -617,29 +624,12 @@
     50%      { transform: scale(1.04); box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 0 24px rgba(226,35,26,0); }
   }
 
-  /* Mobile: stack panels vertically when narrow */
-  @media (max-width: 900px) {
-    .ctrl-btn { font-size: 11px; padding: 6px 10px; letter-spacing: 0.02em; }
-    .ctrl-btn .count { display: inline; }
-  }
-  @media (max-width: 700px) {
-    main { flex-direction: column; }
-    .tray, .board { flex: 1 1 50%; }
-    .tray { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.2); }
-    header {
-      height: auto; min-height: 52px; padding: 8px 12px;
-      flex-wrap: wrap; gap: 6px;
-    }
-    .brand { font-size: 16px; }
-    .brand .star { width: 18px; height: 18px; }
-    .timer { font-size: 14px; padding: 4px 10px; }
-    .controls { gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 60%; }
-    .ctrl-btn { font-size: 10px; padding: 5px 8px; }
-    main { top: 108px; }
-  }
+  /* Default layout IS phone-portrait now (stage caps at 430px). Old landscape queries removed. */
 </style>
 </head>
 <body>
+
+<div id="stage">
 
 <header>
   <div class="brand">
@@ -706,6 +696,8 @@
     <div id="winContent"></div>
   </div>
 </div>
+
+</div><!-- /#stage -->
 
 <script>
 (() => {
@@ -1236,13 +1228,17 @@
       // Normal drop logic
       const boardRect = document.getElementById('board').getBoundingClientRect();
       const trayRect = document.getElementById('tray').getBoundingClientRect();
-      const homePageX = boardRect.left + piece.homeX;
+      const phoneRect = getStage().getBoundingClientRect();
+      const homePageX = boardRect.left + piece.homeX;   // page coords
       const homePageY = boardRect.top + piece.homeY;
+      // piece.x/y are #stage-local while in drag layer — convert home to same space
+      const homeStageX = homePageX - phoneRect.left;
+      const homeStageY = homePageY - phoneRect.top;
 
       const pieceCentreX = piece.x + piece.bbW / 2;
       const pieceCentreY = piece.y + piece.bbH / 2;
-      const homeCentreX = homePageX + piece.bbW / 2;
-      const homeCentreY = homePageY + piece.bbH / 2;
+      const homeCentreX = homeStageX + piece.bbW / 2;
+      const homeCentreY = homeStageY + piece.bbH / 2;
       const dist = Math.hypot(pieceCentreX - homeCentreX, pieceCentreY - homeCentreY);
 
       // Snap requires both position close AND rotation correct (0°)
@@ -1251,8 +1247,8 @@
       if (dist <= SNAP_THRESHOLD && rotCorrect) {
         // Snap to home
         el.classList.add('snap-anim');
-        piece.x = homePageX;
-        piece.y = homePageY;
+        piece.x = homeStageX;
+        piece.y = homeStageY;
         positionPiece(piece);
         setTimeout(() => {
           reparentFromDragLayer(piece, 'board');
@@ -1281,34 +1277,45 @@
     }
   }
 
-  // Green snap flash at the lock position (page coords)
+  // #stage = phone-shaped container that wraps everything. All floating layers append here.
+  const getStage = () => document.getElementById('stage');
+
+  // Green snap flash at the lock position (page coords in → stage-local applied)
   function spawnSnapGlow(pageX, pageY, w, h) {
+    const stage = getStage();
+    const sRect = stage.getBoundingClientRect();
     const glow = document.createElement('div');
     glow.className = 'snap-glow';
-    glow.style.left = `${pageX}px`;
-    glow.style.top = `${pageY}px`;
+    glow.style.left = `${pageX - sRect.left}px`;
+    glow.style.top = `${pageY - sRect.top}px`;
     glow.style.width = `${w}px`;
     glow.style.height = `${h}px`;
-    document.body.appendChild(glow);
+    stage.appendChild(glow);
     setTimeout(() => glow.remove(), 700);
   }
 
-  // Move piece into <body> drag layer so it's not clipped by panel overflow
+  // Move piece into #stage drag layer so it's not clipped by panel overflow.
+  // While in drag layer, piece.x/piece.y are STAGE-LOCAL (not page).
   function moveToDragLayer(piece, pageX, pageY) {
     if (piece.parent === 'drag') return;
-    document.body.appendChild(piece.el);
+    const stage = getStage();
+    const sRect = stage.getBoundingClientRect();
+    stage.appendChild(piece.el);
     piece.parent = 'drag';
-    piece.x = pageX;
-    piece.y = pageY;
+    piece.x = pageX - sRect.left;
+    piece.y = pageY - sRect.top;
     positionPiece(piece);
   }
 
   function reparentFromDragLayer(piece, target) {
     const stage = document.getElementById(target === 'board' ? 'boardStage' : 'trayStage');
     const stageRect = stage.getBoundingClientRect();
-    // Convert page coords to stage-local
-    piece.x = piece.x - stageRect.left;
-    piece.y = piece.y - stageRect.top;
+    const phoneRect = getStage().getBoundingClientRect();
+    // piece.x/y are #stage-local — convert via page → target-stage-local
+    const pageX = piece.x + phoneRect.left;
+    const pageY = piece.y + phoneRect.top;
+    piece.x = pageX - stageRect.left;
+    piece.y = pageY - stageRect.top;
     stage.appendChild(piece.el);
     piece.parent = target;
     positionPiece(piece);
@@ -1396,14 +1403,16 @@
       </svg>
     `;
 
+    const stageEl = getStage();
+    const stageR = stageEl.getBoundingClientRect();
     const cap = document.createElement('div');
     cap.className = 'bottle-cap';
-    cap.style.left = `${capCx - capR}px`;
-    cap.style.top = `${capCy - capR}px`;
+    cap.style.left = `${capCx - capR - stageR.left}px`;
+    cap.style.top = `${capCy - capR - stageR.top}px`;
     cap.style.width = `${capSize}px`;
     cap.style.height = `${capSize}px`;
     cap.innerHTML = capSVG;
-    document.body.appendChild(cap);
+    stageEl.appendChild(cap);
 
     // Trigger animation next frame so opacity transition kicks in cleanly
     requestAnimationFrame(() => cap.classList.add('show'));
@@ -1428,6 +1437,9 @@
 
   function spawnFoam(centerX, centerY) {
     const layer = document.getElementById('foamLayer');
+    const sRect = getStage().getBoundingClientRect();
+    const cx = centerX - sRect.left;   // page → stage-local
+    const cy = centerY - sRect.top;
     const count = 14;
     for (let i = 0; i < count; i++) {
       const blob = document.createElement('div');
@@ -1437,8 +1449,8 @@
       const drift = (Math.random() - 0.5) * 80;
       blob.style.width = `${size}px`;
       blob.style.height = `${size}px`;
-      blob.style.left = `${centerX - size / 2 + offsetX}px`;
-      blob.style.top = `${centerY - size / 2}px`;
+      blob.style.left = `${cx - size / 2 + offsetX}px`;
+      blob.style.top = `${cy - size / 2}px`;
       blob.style.setProperty('--fx', `${drift}px`);
       blob.style.animationDelay = `${Math.random() * 0.12}s`;
       layer.appendChild(blob);
@@ -1563,21 +1575,24 @@
   function fireConfetti() {
     const canvas = document.getElementById('confetti');
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Size canvas to #stage bounds so particles stay inside the phone frame
+    const stageEl = getStage();
     const resize = () => {
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
+      const r = stageEl.getBoundingClientRect();
+      canvas.width = r.width * dpr;
+      canvas.height = r.height * dpr;
+      canvas.style.width = r.width + 'px';
+      canvas.style.height = r.height + 'px';
       confettiCtx = canvas.getContext('2d');
       confettiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
 
-    // Heineken-leaning palette + accents
     const colors = ['#e2231a', '#ff5b50', '#00853f', '#00a14e', '#ffd700', '#ffb300', '#ffffff', '#00b4ff'];
-    const W = window.innerWidth;
-    const H = window.innerHeight;
+    const stageRect0 = stageEl.getBoundingClientRect();
+    const W = stageRect0.width;
+    const H = stageRect0.height;
 
     confettiParticles = [];
 
@@ -1659,7 +1674,8 @@
 
     const tick = () => {
       const ctx = confettiCtx;
-      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      const sr = stageEl.getBoundingClientRect();
+      ctx.clearRect(0, 0, sr.width, sr.height);
 
       // Drift wind toward a new target every ~60 frames
       if (Math.random() < 0.018) wind.target = (Math.random() - 0.5) * 1.4;
@@ -1740,7 +1756,7 @@
 
         ctx.restore();
 
-        if (p.life > p.maxLife || p.y > window.innerHeight + 60) {
+        if (p.life > p.maxLife || p.y > sr.height + 60) {
           confettiParticles.splice(i, 1);
         }
       }
@@ -1791,9 +1807,9 @@
         span.className = 'emoji-pop';
         span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
         const left = 5 + Math.random() * 90;
-        span.style.left = `${left}vw`;
+        span.style.left = `${left}%`;   // % of emoji-layer = stage-relative
         span.style.bottom = `-40px`;
-        span.style.fontSize = `${28 + Math.random() * 28}px`;
+        span.style.fontSize = `${22 + Math.random() * 20}px`;
         layer.appendChild(span);
         setTimeout(() => span.remove(), 3700);
       }, i * 90);
@@ -2499,7 +2515,7 @@
     if (!t) {
       t = document.createElement('div');
       t.className = 'toast';
-      document.body.appendChild(t);
+      getStage().appendChild(t);
     }
     t.textContent = msg;
     requestAnimationFrame(() => t.classList.add('show'));
