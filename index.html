@@ -640,21 +640,8 @@
     <span style="opacity:.6; font-weight:400; font-size:14px; margin-left:6px; letter-spacing:.12em;" id="modeBadge">JIGSAW</span>
   </div>
   <div class="controls">
-    <button class="ctrl-btn" id="hintBtn" title="Show me where a piece goes">
-      💡 HINT <span class="count" id="hintCount">3</span>
-    </button>
-    <button class="ctrl-btn" id="hardBtn" title="Toggle rotation mode — pieces start at random angles, tap to rotate 90°">
-      🔄 HARD
-    </button>
-    <button class="ctrl-btn" id="dailyBtn" title="Daily challenge — same scramble for everyone today">
-      📅 DAILY
-    </button>
-    <button class="ctrl-btn" id="restartBtn" title="Restart with a fresh scramble">
-      ↻ RESTART
-    </button>
-    <button class="ctrl-btn" id="lbBtn" title="View leaderboard">
-      🏆 LEADERS
-    </button>
+    <button class="ctrl-btn" id="restartBtn" title="Restart with a fresh scramble">RESTART</button>
+    <button class="ctrl-btn" id="lbBtn" title="View leaderboard">LEADERS</button>
     <div class="timer" id="timer">00:00</div>
   </div>
 </header>
@@ -2251,7 +2238,9 @@
   }
   function updateHintBtn() {
     const btn = document.getElementById('hintBtn');
-    document.getElementById('hintCount').textContent = hintsLeft;
+    const cnt = document.getElementById('hintCount');
+    if (!btn || !cnt) return;   // buttons removed from header
+    cnt.textContent = hintsLeft;
     btn.disabled = hintsLeft <= 0;
   }
   function flashSlot(piece) {
@@ -2524,11 +2513,12 @@
 
   // ---------- Controls wiring ----------
   function wireControls() {
-    document.getElementById('restartBtn').addEventListener('click', () => restartGame());
-    document.getElementById('hintBtn').addEventListener('click', requestHint);
-    document.getElementById('hardBtn').addEventListener('click', () => restartGame({ hard: !hardMode }));
-    document.getElementById('dailyBtn').addEventListener('click', () => restartGame({ daily: !dailyMode }));
-    document.getElementById('lbBtn').addEventListener('click', openLeaderboardModal);
+    const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+    on('restartBtn', () => restartGame());
+    on('hintBtn',    requestHint);
+    on('hardBtn',    () => restartGame({ hard: !hardMode }));
+    on('dailyBtn',   () => restartGame({ daily: !dailyMode }));
+    on('lbBtn',      openLeaderboardModal);
   }
 
   // Dev shortcut: press "W" to auto-solve (preview party).
